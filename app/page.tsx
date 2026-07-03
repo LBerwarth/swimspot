@@ -35,15 +35,7 @@ export default function Home() {
           >
             © les contributeurs d’OpenStreetMap
           </a>{" "}
-          (ODbL) · itinéraires{" "}
-          <a
-            className="underline hover:text-fuchsia-700"
-            href="https://project-osrm.org"
-            target="_blank"
-            rel="noreferrer"
-          >
-            OSRM
-          </a>
+          (ODbL)
         </p>
         <p>
           Horaires et tarifs issus d’OpenStreetMap : disponibles pour une partie

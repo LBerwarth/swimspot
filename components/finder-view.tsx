@@ -9,7 +9,6 @@ import {
   isOpenAt,
   parseOpeningHours,
 } from "@/lib/opening-hours";
-import { fetchStreetDistancesKm } from "@/lib/street-distance";
 import {
   fetchToulouseLive,
   isOpenNowLive,
@@ -51,12 +50,6 @@ export function FinderView() {
   const [lenFilter, setLenFilter] = useState<LenFilter>("all");
   const [openFilter, setOpenFilter] = useState<OpenFilter>("all");
   const [listLimit, setListLimit] = useState(LIST_STEP);
-  // Résultat OSRM, étiqueté par la recherche (position + rayon) qui l'a produit :
-  // un résultat d'une recherche précédente est simplement ignoré.
-  const [street, setStreet] = useState<{
-    key: string;
-    distances: Map<string, number>;
-  } | null>(null);
   // null = pas encore chargées depuis localStorage : l'effet de persistance
   // ne doit pas écraser la liste stockée avec un tableau vide au montage.
   const [savedAddresses, setSavedAddresses] = useState<UserLocation[] | null>(
@@ -180,44 +173,9 @@ export function FinderView() {
       });
   }, [inRadius, envFilter, lenFilter, openFilter, live]);
 
-  const streetKey = useMemo(
-    () => (location ? `${location.lat},${location.lon}:${radiusKm}` : ""),
-    [location, radiusKm],
-  );
-
-  // Distances par la route (OSRM), calculées une fois par position + rayon —
-  // les filtres type/longueur réutilisent le même résultat. En cas d'échec,
-  // l'affichage retombe sur le vol d'oiseau.
-  useEffect(() => {
-    if (!location || inRadius.length === 0) return;
-    const controller = new AbortController();
-    fetchStreetDistancesKm(location, inRadius, controller.signal)
-      .then((distances) => setStreet({ key: streetKey, distances }))
-      .catch(() => {
-        // Serveur de routage indisponible : distances à vol d'oiseau.
-      });
-    return () => controller.abort();
-  }, [location, inRadius, streetKey]);
-
-  const streetKm =
-    street && street.key === streetKey ? street.distances : null;
-
-  /**
-   * Liste affichée : distances route injectées, tri et rayon par distance
-   * route (une piscine à 10 km à vol d'oiseau peut être à 16 km par la
-   * route : elle sort du rayon « 10 km »). La route étant toujours ≥ au vol
-   * d'oiseau, le préfiltre à vol d'oiseau ne perd aucune candidate.
-   */
-  const displayed: PoolWithDistance[] = useMemo(() => {
-    if (!streetKm) return nearby;
-    return nearby
-      .map((pool) => ({ ...pool, streetKm: streetKm.get(pool.id) }))
-      .filter((pool) => (pool.streetKm ?? pool.distanceKm) <= radiusKm)
-      .sort(
-        (a, b) =>
-          (a.streetKm ?? a.distanceKm) - (b.streetKm ?? b.distanceKm),
-      );
-  }, [nearby, streetKm, radiusKm]);
+  // Distance à vol d'oiseau partout : simple, cohérente avec le cercle de la
+  // carte (les distances routières testées se sont révélées peu intuitives).
+  const displayed = nearby;
 
   const center = useMemo<[number, number] | null>(
     () => (location ? [location.lat, location.lon] : null),
@@ -422,9 +380,7 @@ export function FinderView() {
               ? "Chargement des piscines…"
               : displayed.length === 0
                 ? "Aucune piscine dans ce rayon — essayez un rayon plus grand."
-                : `${displayed.length} piscine${displayed.length > 1 ? "s" : ""} à moins de ${radiusKm} km ${
-                    streetKm ? "par la route" : "à vol d'oiseau"
-                  } de ${location.label}.`}
+                : `${displayed.length} piscine${displayed.length > 1 ? "s" : ""} à moins de ${radiusKm} km à vol d'oiseau de ${location.label}.`}
           </p>
 
           <div className="space-y-3">

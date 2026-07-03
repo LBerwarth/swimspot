@@ -53,6 +53,6 @@ npm run build:data   # régénère public/data/piscines.json (sources en ligne)
 ## Stack
 
 Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Leaflet ·
-géocodage par [api-adresse.data.gouv.fr](https://adresse.data.gouv.fr/api-doc/adresse) ·
-distances par la route via l'API table du
-[serveur OSRM public](https://project-osrm.org) (repli : vol d'oiseau).
+géocodage par [api-adresse.data.gouv.fr](https://adresse.data.gouv.fr/api-doc/adresse).
+Distances à vol d'oiseau partout (les distances routières OSRM, essayées puis
+retirées, se sont révélées peu intuitives face au cercle de la carte).

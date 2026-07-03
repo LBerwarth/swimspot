@@ -79,15 +79,9 @@ export function PoolCard({
         </div>
         <span
           className="shrink-0 rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-semibold text-fuchsia-900"
-          title={
-            pool.streetKm !== undefined
-              ? "Distance par la route"
-              : "Distance à vol d'oiseau"
-          }
+          title="Distance à vol d'oiseau"
         >
-          {pool.streetKm !== undefined
-            ? formatDistance(pool.streetKm)
-            : `≈ ${formatDistance(pool.distanceKm)}`}
+          {formatDistance(pool.distanceKm)}
         </span>
       </div>
 
