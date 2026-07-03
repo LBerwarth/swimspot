@@ -103,7 +103,9 @@ function parseTimes(spec: string): Array<[number, number]> | null {
 }
 
 /** Applique une règle « jours + horaires » (ou « jours off ») à un planning. */
-function applyRule(week: WeekSchedule, rule: string): boolean {
+function applyRule(week: WeekSchedule, rawRule: string): boolean {
+  // Tolère les espaces autour des virgules (« 07:00-09:00, 12:00-14:00 »).
+  const rule = rawRule.replace(/\s*,\s*/g, ",");
   let days: number[];
   let rest: string;
   const m = rule.match(DAY_SPEC_RE);

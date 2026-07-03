@@ -92,6 +92,17 @@ describe("parseOpeningHours", () => {
     expect(parsed!.extras).toEqual(["jours fériés 10h–12h"]);
   });
 
+  it("tolère les espaces après les virgules (cas Bellevue)", () => {
+    const parsed = parseOpeningHours(
+      "Mo 12:00-14:00; Tu 07:00-09:00, 12:00-14:00; Sa 09:30-15:00",
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed!.week[1]).toEqual([
+      [420, 540],
+      [720, 840],
+    ]);
+  });
+
   it("interprète les fermetures saisonnières (« Jun-Aug off »)", () => {
     const parsed = parseOpeningHours("Mo-Su 10:00-19:00; Jun-Aug off");
     expect(parsed).not.toBeNull();

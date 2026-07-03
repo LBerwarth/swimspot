@@ -92,6 +92,23 @@ const RESTRICTED_NAME_RE = new RegExp(
   ].join("|"),
 );
 
+/**
+ * Installations Data ES qui regroupent en réalité plusieurs piscines
+ * distinctes : on les scinde d'après le nom des équipements. Chaque bassin
+ * rejoint le premier groupe dont le motif correspond (sinon le premier
+ * groupe). Les coordonnées propres à chaque groupe sont recalculées.
+ */
+const SPLIT_OVERRIDES: Record<
+  string,
+  Array<{ suffix: string; name: string; match: RegExp }>
+> = {
+  // « Parc des Sports », île du Ramier à Toulouse = Castex + Alfred Nakache.
+  I315550226: [
+    { suffix: "castex", name: "Piscine Castex", match: /castex/i },
+    { suffix: "nakache", name: "Piscine Alfred Nakache", match: /nakache/i },
+  ],
+};
+
 /** Minuscules sans accents, pour comparer les noms au motif d'exclusion. */
 function normalizeName(value: string): string {
   return value
@@ -177,6 +194,26 @@ async function main() {
     byInst.set(row.inst_numero, list);
   }
 
+  // 1 bis. Scinder les installations qui regroupent plusieurs piscines.
+  const forcedNames = new Map<string, string>();
+  for (const [inst, groups] of Object.entries(SPLIT_OVERRIDES)) {
+    const basins = byInst.get(inst);
+    if (!basins) continue;
+    byInst.delete(inst);
+    for (const group of groups) {
+      const members = basins.filter((b, i) => {
+        const name = `${b.equip_nom ?? ""} ${b.inst_nom ?? ""}`;
+        const first = groups.find((g) => g.match.test(name)) ?? groups[0];
+        void i;
+        return first === group;
+      });
+      if (members.length === 0) continue;
+      const id = `${inst}-${group.suffix}`;
+      byInst.set(id, members);
+      forcedNames.set(id, group.name);
+    }
+  }
+
   // 2. Index spatial des équipements OSM.
   const osmGrid = new Map<string, OsmElement[]>();
   for (const el of osmElements) {
@@ -227,6 +264,7 @@ async function main() {
     const lon = basins.reduce((s, b) => s + b.equip_coordonnees!.lon, 0) / basins.length;
 
     const rawName =
+      forcedNames.get(inst) ??
       [basins[0].inst_nom, ...basins.map((b) => b.equip_nom)]
         .filter((n): n is string => !!n)
         .find((n) => /piscine|aqua|nautique|baignade|natation|baln/i.test(n)) ??
