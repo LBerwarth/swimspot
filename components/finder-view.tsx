@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import type { PoolDataset, PoolWithDistance } from "@/lib/types";
+import type {
+  CountryIndex,
+  Pool,
+  PoolDataset,
+  PoolWithDistance,
+} from "@/lib/types";
 import { haversineKm } from "@/lib/geo";
 import {
   isInClosedPeriod,
@@ -42,8 +47,25 @@ interface SavedSearch {
   radiusKm: number;
 }
 
+/** Marge autour de l'emprise d'un pays : couvre les zones frontalières. */
+const BBOX_PADDING_DEG = 0.6;
+
+function countriesFor(index: CountryIndex, loc: UserLocation): string[] {
+  return index.countries
+    .filter(({ bbox: [minLat, minLon, maxLat, maxLon] }) =>
+      loc.lat >= minLat - BBOX_PADDING_DEG &&
+      loc.lat <= maxLat + BBOX_PADDING_DEG &&
+      loc.lon >= minLon - BBOX_PADDING_DEG &&
+      loc.lon <= maxLon + BBOX_PADDING_DEG,
+    )
+    .map((c) => c.code);
+}
+
 export function FinderView() {
-  const [dataset, setDataset] = useState<PoolDataset | null>(null);
+  const [index, setIndex] = useState<CountryIndex | null>(null);
+  const [poolsByCountry, setPoolsByCountry] = useState<Map<string, Pool[]>>(
+    () => new Map(),
+  );
   const [loadError, setLoadError] = useState(false);
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
@@ -83,12 +105,12 @@ export function FinderView() {
     } catch {
       // Stockage local corrompu ou indisponible : on repart de zéro.
     }
-    // La recherche sauvegardée n'est restaurée qu'une fois les données prêtes :
+    // La recherche sauvegardée n'est restaurée qu'une fois l'index prêt :
     // la liste ne peut de toute façon rien afficher avant.
-    fetch("/data/piscines.json")
+    fetch("/data/index.json")
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then((data: PoolDataset) => {
-        setDataset(data);
+      .then((data: CountryIndex) => {
+        setIndex(data);
         setSavedAddresses(addresses);
         if (saved?.location) setLocation(saved.location);
         if (saved && RADIUS_OPTIONS_KM.includes(saved.radiusKm)) {
@@ -97,6 +119,44 @@ export function FinderView() {
       })
       .catch(() => setLoadError(true));
   }, []);
+
+  // Charge les fichiers des pays couvrant la position (zones frontalières :
+  // plusieurs pays possibles). Les pays déjà chargés sont conservés.
+  useEffect(() => {
+    if (!index || !location) return;
+    const missing = countriesFor(index, location).filter(
+      (code) => !poolsByCountry.has(code),
+    );
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map((code) =>
+        fetch(`/data/piscines-${code}.json`)
+          .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+          .then((data: PoolDataset) => [code, data.pools] as const),
+      ),
+    )
+      .then((loaded) => {
+        if (cancelled) return;
+        setPoolsByCountry((prev) => new Map([...prev, ...loaded]));
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [index, location, poolsByCountry]);
+
+  const allPools = useMemo(
+    () => [...poolsByCountry.values()].flat(),
+    [poolsByCountry],
+  );
+
+  const loadingPools =
+    index !== null &&
+    location !== null &&
+    countriesFor(index, location).some((code) => !poolsByCountry.has(code));
 
   useEffect(() => {
     if (savedAddresses === null) return;
@@ -121,15 +181,15 @@ export function FinderView() {
 
   /** Piscines dans le rayon (à vol d'oiseau), triées par distance à vol d'oiseau. */
   const inRadius: PoolWithDistance[] = useMemo(() => {
-    if (!dataset || !location) return [];
-    return dataset.pools
+    if (!location) return [];
+    return allPools
       .map((pool) => ({
         ...pool,
         distanceKm: haversineKm(location.lat, location.lon, pool.lat, pool.lon),
       }))
       .filter((pool) => pool.distanceKm <= radiusKm)
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [dataset, location, radiusKm]);
+  }, [allPools, location, radiusKm]);
 
   /** Piscines du rayon après filtres type/longueur. */
   const nearby: PoolWithDistance[] = useMemo(() => {
@@ -392,10 +452,12 @@ export function FinderView() {
           <p className="mt-1">
             Touchez « 📍 Autour de moi » ou saisissez une adresse ci-dessus.
           </p>
-          {dataset && (
+          {index && (
             <p className="mt-3 text-xs text-slate-400">
-              {dataset.count.toLocaleString("fr-FR")} piscines publiques
-              référencées en France.
+              {index.countries
+                .reduce((sum, c) => sum + c.count, 0)
+                .toLocaleString("fr-FR")}{" "}
+              piscines publiques référencées.
             </p>
           )}
         </div>
@@ -406,7 +468,7 @@ export function FinderView() {
           <PoolMap center={center} radiusKm={radiusKm} pools={displayed} />
 
           <p className="text-sm text-slate-600" aria-live="polite">
-            {dataset === null
+            {index === null || loadingPools
               ? "Chargement des piscines…"
               : displayed.length === 0
                 ? favoritesOnly

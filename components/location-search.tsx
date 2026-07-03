@@ -52,27 +52,64 @@ export function LocationSearch({ value, onChange }: Props) {
       return;
     }
     debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5`,
-        );
-        if (!res.ok) throw new Error(String(res.status));
-        const data = await res.json();
-        const next: Suggestion[] = (data.features ?? []).map(
-          (f: {
-            properties: { label: string };
-            geometry: { coordinates: [number, number] };
-          }) => ({
+      // Deux géocodeurs en parallèle : l'API adresse nationale (meilleure sur
+      // les adresses françaises) et Photon (couverture européenne, base OSM).
+      const [adresse, photon] = await Promise.allSettled([
+        fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=4`,
+        ).then((res) => (res.ok ? res.json() : Promise.reject(res.status))),
+        fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=4&lang=fr`,
+        ).then((res) => (res.ok ? res.json() : Promise.reject(res.status))),
+      ]);
+
+      const next: Suggestion[] = [];
+      if (adresse.status === "fulfilled") {
+        for (const f of adresse.value.features ?? []) {
+          next.push({
             label: f.properties.label,
             lon: f.geometry.coordinates[0],
             lat: f.geometry.coordinates[1],
-          }),
-        );
-        setSuggestions(next);
-        setOpen(next.length > 0);
-      } catch {
-        setError("Recherche d'adresse indisponible pour le moment.");
+          });
+        }
       }
+      if (photon.status === "fulfilled") {
+        for (const f of photon.value.features ?? []) {
+          const p = f.properties ?? {};
+          // La France est déjà couverte (et mieux) par l'API adresse.
+          if (!p.countrycode || p.countrycode === "FR") continue;
+          const label = [
+            [p.name ?? [p.housenumber, p.street].filter(Boolean).join(" ")]
+              .filter(Boolean)
+              .join(" "),
+            [p.postcode, p.city ?? p.district].filter(Boolean).join(" "),
+            p.country,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          if (!label) continue;
+          next.push({
+            label,
+            lon: f.geometry.coordinates[0],
+            lat: f.geometry.coordinates[1],
+          });
+        }
+      }
+      if (adresse.status === "rejected" && photon.status === "rejected") {
+        setError("Recherche d'adresse indisponible pour le moment.");
+        return;
+      }
+
+      // Doublons grossiers (même point à ~100 m près).
+      const seen = new Set<string>();
+      const unique = next.filter((s) => {
+        const key = `${s.lat.toFixed(3)}:${s.lon.toFixed(3)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setSuggestions(unique.slice(0, 6));
+      setOpen(unique.length > 0);
     }, 300);
   };
 

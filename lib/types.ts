@@ -14,9 +14,10 @@ export interface Pool {
   /** Code postal. */
   cp: string;
   address?: string;
-  /** Code département (ex. "31", "2A"). */
-  dep: string;
-  country: "FR";
+  /** Code département français (ex. "31", "2A") — absent hors de France. */
+  dep?: string;
+  /** Code pays ISO 3166-1 alpha-2 (FR, GB…). */
+  country: string;
   lat: number;
   lon: number;
   env?: PoolEnv;
@@ -39,6 +40,21 @@ export interface PoolDataset {
   updated: string;
   count: number;
   pools: Pool[];
+}
+
+/** Entrée de `public/data/index.json` : un fichier de données par pays. */
+export interface CountryEntry {
+  /** Code pays minuscule (fr, gb…), aussi suffixe du fichier de données. */
+  code: string;
+  count: number;
+  /** Emprise [minLat, minLon, maxLat, maxLon]. */
+  bbox: [number, number, number, number];
+  updated: string;
+}
+
+export interface CountryIndex {
+  updated: string;
+  countries: CountryEntry[];
 }
 
 /** Piscine annotée de sa distance à vol d'oiseau à la position de l'utilisateur. */
