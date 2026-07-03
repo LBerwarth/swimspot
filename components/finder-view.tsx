@@ -23,6 +23,8 @@ const PoolMap = dynamic(() => import("@/components/pool-map"), {
 const RADIUS_OPTIONS_KM = [1, 2, 5, 10, 20, 50];
 const LIST_STEP = 40;
 const STORAGE_KEY = "pf:search";
+const ADDRESSES_KEY = "pf:addresses";
+const MAX_SAVED_ADDRESSES = 8;
 
 type EnvFilter = "all" | "int" | "ext";
 /** Classe de longueur de bassin : 25 = 25 à <50 m, 50 = 50 m et plus. */
@@ -50,11 +52,21 @@ export function FinderView() {
     key: string;
     distances: Map<string, number>;
   } | null>(null);
+  // null = pas encore chargées depuis localStorage : l'effet de persistance
+  // ne doit pas écraser la liste stockée avec un tableau vide au montage.
+  const [savedAddresses, setSavedAddresses] = useState<UserLocation[] | null>(
+    null,
+  );
 
   useEffect(() => {
     let saved: SavedSearch | null = null;
+    let addresses: UserLocation[] = [];
     try {
       saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      const rawAddresses = JSON.parse(
+        localStorage.getItem(ADDRESSES_KEY) ?? "[]",
+      );
+      if (Array.isArray(rawAddresses)) addresses = rawAddresses;
     } catch {
       // Stockage local corrompu ou indisponible : on repart de zéro.
     }
@@ -64,6 +76,7 @@ export function FinderView() {
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((data: PoolDataset) => {
         setDataset(data);
+        setSavedAddresses(addresses);
         if (saved?.location) setLocation(saved.location);
         if (saved && RADIUS_OPTIONS_KM.includes(saved.radiusKm)) {
           setRadiusKm(saved.radiusKm);
@@ -71,6 +84,15 @@ export function FinderView() {
       })
       .catch(() => setLoadError(true));
   }, []);
+
+  useEffect(() => {
+    if (savedAddresses === null) return;
+    try {
+      localStorage.setItem(ADDRESSES_KEY, JSON.stringify(savedAddresses));
+    } catch {
+      // Quota ou navigation privée : la persistance est optionnelle.
+    }
+  }, [savedAddresses]);
 
   useEffect(() => {
     if (!location) return;
@@ -177,9 +199,70 @@ export function FinderView() {
     setListLimit(LIST_STEP);
   };
 
+  const isCurrentSaved =
+    location !== null &&
+    (savedAddresses ?? []).some((a) => a.label === location.label);
+
+  const saveCurrentAddress = () => {
+    if (!location || isCurrentSaved) return;
+    setSavedAddresses((prev) =>
+      [location, ...(prev ?? [])].slice(0, MAX_SAVED_ADDRESSES),
+    );
+  };
+
+  const removeAddress = (label: string) => {
+    setSavedAddresses((prev) => (prev ?? []).filter((a) => a.label !== label));
+  };
+
   return (
     <div className="space-y-4">
       <LocationSearch value={location} onChange={(l) => changeFilters(() => setLocation(l))} />
+
+      {((savedAddresses?.length ?? 0) > 0 || location) && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Adresses enregistrées">
+          {(savedAddresses ?? []).map((address) => (
+            <span
+              key={address.label}
+              className={`flex items-center gap-1 rounded-full py-1 pl-3 pr-1.5 text-xs font-semibold transition ${
+                location?.label === address.label
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "bg-white/80 text-violet-800 ring-1 ring-violet-200"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => changeFilters(() => setLocation(address))}
+                className="max-w-52 truncate"
+                title={address.label}
+              >
+                {address.label}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeAddress(address.label)}
+                aria-label={`Supprimer l'adresse ${address.label}`}
+                className={`rounded-full px-1 leading-none ${
+                  location?.label === address.label
+                    ? "hover:bg-violet-500"
+                    : "hover:bg-violet-100"
+                }`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {location && !isCurrentSaved && savedAddresses !== null && (
+            <button
+              type="button"
+              onClick={saveCurrentAddress}
+              className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-fuchsia-800 ring-1 ring-dashed ring-fuchsia-300 transition hover:bg-fuchsia-50"
+              title="Garder cette adresse sous la main"
+            >
+              ☆ Enregistrer « <span className="inline-block max-w-40 truncate align-bottom">{location.label}</span> »
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Rayon de recherche">
