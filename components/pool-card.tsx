@@ -6,6 +6,8 @@ import {
   formatWeekFR,
   isOpenAt,
   parseOpeningHours,
+  prettifyOpeningHours,
+  type WeekSchedule,
 } from "@/lib/opening-hours";
 
 const ENV_LABELS: Record<string, string> = {
@@ -14,9 +16,28 @@ const ENV_LABELS: Record<string, string> = {
   mix: "Couverte + plein air",
 };
 
+function WeekLines({ week }: { week: WeekSchedule }) {
+  return (
+    <ul className="mt-1 space-y-0.5 text-xs text-slate-700">
+      {formatWeekFR(week).map((line) => (
+        <li key={line.days} className="flex gap-2">
+          <span className="w-16 shrink-0 font-medium">{line.days}</span>
+          <span>{line.hours}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function PoolCard({ pool }: { pool: PoolWithDistance }) {
-  const week = pool.hours ? parseOpeningHours(pool.hours) : null;
-  const openNow = week ? isOpenAt(week, new Date()) : null;
+  const parsed = pool.hours ? parseOpeningHours(pool.hours) : null;
+  // Le badge « ouverte/fermée » n'est affiché que si la semaine type suffit :
+  // avec des horaires de vacances scolaires ou des périodes datées, on ne sait
+  // pas quel planning s'applique aujourd'hui.
+  const certain =
+    parsed !== null && !parsed.holidayWeek && parsed.extras.length === 0;
+  const openNow =
+    certain && parsed ? isOpenAt(parsed.week, new Date()) : null;
 
   const tarif = pool.charge
     ? pool.charge
@@ -74,30 +95,55 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
       </div>
 
       <div className="mt-3 text-sm">
-        {week ? (
+        {parsed ? (
           <div>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                openNow
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              {openNow ? "Ouverte en ce moment" : "Fermée en ce moment"}
-            </span>
-            <ul className="mt-2 space-y-0.5 text-xs text-slate-700">
-              {formatWeekFR(week).map((line) => (
-                <li key={line.days} className="flex gap-2">
-                  <span className="w-16 shrink-0 font-medium">{line.days}</span>
-                  <span>{line.hours}</span>
-                </li>
+            {openNow !== null && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  openNow
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {openNow ? "Ouverte en ce moment" : "Fermée en ce moment"}
+              </span>
+            )}
+            {parsed.holidayWeek && (
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                Période scolaire
+              </p>
+            )}
+            <WeekLines week={parsed.week} />
+            {parsed.holidayWeek && (
+              <>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                  Vacances scolaires
+                </p>
+                <WeekLines week={parsed.holidayWeek} />
+              </>
+            )}
+            {parsed.extras.length > 0 && (
+              <>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                  Périodes particulières
+                </p>
+                <ul className="mt-1 space-y-0.5 text-xs text-slate-700">
+                  {parsed.extras.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        ) : pool.hours ? (
+          <div className="text-xs text-slate-700">
+            <p className="font-medium">Horaires :</p>
+            <ul className="mt-1 space-y-0.5">
+              {prettifyOpeningHours(pool.hours).map((line) => (
+                <li key={line}>{line}</li>
               ))}
             </ul>
           </div>
-        ) : pool.hours ? (
-          <p className="text-xs text-slate-700">
-            <span className="font-medium">Horaires :</span> {pool.hours}
-          </p>
         ) : (
           <p className="text-xs italic text-slate-400">
             Horaires non renseignés — vérifiez sur le site officiel.
