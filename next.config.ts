@@ -4,11 +4,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Le jeu de données statique peut être mis en cache une heure côté CDN,
-        // il n'est régénéré que par `npm run build:data`.
+        // CDN : cache une heure. Navigateur : revalide à chaque chargement
+        // (réponse 304 via ETag), sinon un jeu de données régénéré resterait
+        // invisible jusqu'à une heure.
         source: "/data/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate, s-maxage=3600, stale-while-revalidate=86400",
+          },
         ],
       },
     ];
