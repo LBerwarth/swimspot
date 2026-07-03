@@ -214,9 +214,11 @@ export function FinderView() {
           ? lens.some((l) => l >= 50)
           : lens.some((l) => l >= 25 && l < 50);
       })
-      // Ouverture : horaires connus et ouverts selon au moins un des plannings
-      // (semaine type ou vacances scolaires — on ne sait pas toujours lequel
-      // s'applique aujourd'hui). Horaires inconnus = masquée.
+      // Ouverture, selon les plannings connus (semaine type ou vacances
+      // scolaires — on ne sait pas toujours lequel s'applique aujourd'hui).
+      // « Maintenant » exige des horaires connus et ouverts ; « Aujourd'hui »
+      // laisse le bénéfice du doute aux piscines sans horaires — il n'écarte
+      // que celles dont on SAIT qu'elles sont fermées aujourd'hui.
       .filter((pool) => {
         if (openFilter === "all") return true;
         const now = new Date();
@@ -227,9 +229,8 @@ export function FinderView() {
             ? isOpenNowLive(liveStatus, now)
             : liveStatus.openToday;
         }
-        if (!pool.hours) return false;
-        const parsed = parseOpeningHours(pool.hours);
-        if (!parsed) return false;
+        const parsed = pool.hours ? parseOpeningHours(pool.hours) : null;
+        if (!parsed) return openFilter === "today";
         // Fermeture saisonnière en cours (ex. piscine d'hiver l'été).
         if (isInClosedPeriod(parsed.closedPeriods, now)) return false;
         const weeks = [

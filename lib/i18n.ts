@@ -122,7 +122,8 @@ const fr: Dict = {
   typeOutdoor: "Plein air",
   openLabel: "Ouvertes :",
   openAria: "Ouverture",
-  openTitle: "D'après les horaires connus (une partie des piscines seulement)",
+  openTitle:
+    "« Maintenant » : horaires connus et ouverts uniquement. « Aujourd'hui » : garde aussi les piscines aux horaires inconnus.",
   openAll: "Peu importe",
   openNow: "Maintenant",
   openToday: "Aujourd'hui",
@@ -223,7 +224,8 @@ const en: Dict = {
   typeOutdoor: "Outdoor",
   openLabel: "Open:",
   openAria: "Opening",
-  openTitle: "Based on known opening hours (only part of the pools)",
+  openTitle:
+    "“Now”: only pools with known, currently-open hours. “Today”: also keeps pools with unknown hours.",
   openAll: "Any",
   openNow: "Now",
   openToday: "Today",
