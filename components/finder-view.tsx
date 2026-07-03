@@ -300,19 +300,6 @@ export function FinderView() {
               {label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => changeFilters(() => setFavoritesOnly((v) => !v))}
-            aria-pressed={favoritesOnly}
-            title="N'afficher que les piscines marquées d'une étoile"
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-              favoritesOnly
-                ? "bg-amber-500 text-white shadow-sm"
-                : "bg-white/80 text-amber-700 ring-1 ring-amber-300 hover:bg-amber-50"
-            }`}
-          >
-            ★ Favoris
-          </button>
         </div>
 
         <div
@@ -337,6 +324,29 @@ export function FinderView() {
                 openFilter === key
                   ? "bg-pink-600 text-white shadow-sm"
                   : "bg-white/80 text-pink-800 ring-1 ring-pink-200 hover:bg-pink-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Favoris">
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Favoris :</span>
+          {(
+            [
+              [false, "Toutes"],
+              [true, "★ Uniquement"],
+            ] as Array<[boolean, string]>
+          ).map(([key, label]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => changeFilters(() => setFavoritesOnly(key))}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                favoritesOnly === key
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "bg-white/80 text-amber-700 ring-1 ring-amber-300 hover:bg-amber-50"
               }`}
             >
               {label}
