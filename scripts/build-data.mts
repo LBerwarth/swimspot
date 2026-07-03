@@ -71,10 +71,26 @@ out tags center;
 `;
 }
 
+const OSM_CACHE_TTL_MS = 7 * 24 * 3600 * 1000;
+
 async function loadOsm(iso: string, localFile?: string): Promise<OsmElement[]> {
   if (localFile) {
     return (JSON.parse(readFileSync(localFile, "utf-8")) as { elements: OsmElement[] })
       .elements;
+  }
+  // Cache local (non commité) : les serveurs Overpass limitent par IP, un
+  // téléchargement réussi ne doit jamais être perdu.
+  const cacheFile = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "cache",
+    `osm-${iso.toLowerCase()}.json`,
+  );
+  if (existsSync(cacheFile)) {
+    const cached = JSON.parse(readFileSync(cacheFile, "utf-8"));
+    if (Date.now() - new Date(cached.fetched).getTime() < OSM_CACHE_TTL_MS) {
+      console.log(`OpenStreetMap ${iso} : cache local du ${cached.fetched}`);
+      return cached.elements as OsmElement[];
+    }
   }
   let lastError: unknown;
   for (const url of OVERPASS_URLS) {
@@ -83,6 +99,11 @@ async function loadOsm(iso: string, localFile?: string): Promise<OsmElement[]> {
       const res = await fetch(url, { method: "POST", body: overpassQuery(iso) });
       if (!res.ok) throw new Error(`Overpass ${iso} : HTTP ${res.status}`);
       const raw = await res.json();
+      mkdirSync(dirname(cacheFile), { recursive: true });
+      writeFileSync(
+        cacheFile,
+        JSON.stringify({ fetched: new Date().toISOString(), elements: raw.elements }),
+      );
       return raw.elements as OsmElement[];
     } catch (err) {
       lastError = err;
