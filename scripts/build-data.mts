@@ -20,7 +20,8 @@ const DATA_ES_URL =
   "?where=" + encodeURIComponent('equip_type_famille="Bassin de natation"') +
   "&select=" + encodeURIComponent(
     "inst_numero,inst_nom,inst_adresse,inst_cp,new_name,dep_code_filled," +
-    "equip_numero,equip_nom,equip_type_name,equip_coordonnees,equip_nature,equip_ouv_public_bool",
+    "equip_numero,equip_nom,equip_type_name,equip_coordonnees,equip_nature,equip_ouv_public_bool," +
+    "equip_bassin_long,equip_long",
   );
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
@@ -47,6 +48,8 @@ interface DataEsRow {
   equip_coordonnees: { lon: number; lat: number } | null;
   equip_nature: string | null;
   equip_ouv_public_bool: string | null;
+  equip_bassin_long: number | null;
+  equip_long: number | null;
 }
 
 interface OsmElement {
@@ -259,6 +262,13 @@ async function main() {
             ? "ext"
             : undefined;
 
+    const lengths = basins
+      .map((b) => b.equip_bassin_long ?? b.equip_long)
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    const len = lengths.length
+      ? Math.round(Math.max(...lengths) * 10) / 10
+      : undefined;
+
     const osm = nearestOsm(lat, lon);
     const tags = osm?.tags ?? {};
     if (osm) stats.matched++;
@@ -278,6 +288,7 @@ async function main() {
       lat: Math.round(lat * 1e5) / 1e5,
       lon: Math.round(lon * 1e5) / 1e5,
       ...(env ? { env } : {}),
+      ...(len ? { len } : {}),
       basins: basinLabels,
       ...(tags.opening_hours ? { hours: tags.opening_hours } : {}),
       ...(tags.fee === "yes" ? { fee: true } : tags.fee === "no" ? { fee: false } : {}),

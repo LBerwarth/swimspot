@@ -44,6 +44,11 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
+        {pool.len && (
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 ring-1 ring-indigo-200">
+            {String(pool.len).replace(".", ",")} m
+          </span>
+        )}
         {pool.env && (
           <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-800 ring-1 ring-cyan-200">
             {ENV_LABELS[pool.env]}

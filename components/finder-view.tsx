@@ -19,6 +19,8 @@ const LIST_STEP = 40;
 const STORAGE_KEY = "pf:search";
 
 type EnvFilter = "all" | "int" | "ext";
+/** Longueur minimale de bassin en mètres, ou pas de contrainte. */
+type LenFilter = "all" | 25 | 50;
 
 interface SavedSearch {
   location: UserLocation;
@@ -31,6 +33,7 @@ export function FinderView() {
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
+  const [lenFilter, setLenFilter] = useState<LenFilter>("all");
   const [listLimit, setListLimit] = useState(LIST_STEP);
 
   useEffect(() => {
@@ -79,8 +82,11 @@ export function FinderView() {
           ? true
           : pool.env === envFilter || pool.env === "mix",
       )
+      // Longueur inconnue = piscine masquée par le filtre : on ne promet pas
+      // un bassin de 25 m sans donnée.
+      .filter((pool) => lenFilter === "all" || (pool.len ?? 0) >= lenFilter)
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [dataset, location, radiusKm, envFilter]);
+  }, [dataset, location, radiusKm, envFilter, lenFilter]);
 
   const center = useMemo<[number, number] | null>(
     () => (location ? [location.lat, location.lon] : null),
@@ -114,27 +120,53 @@ export function FinderView() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Type de piscine">
-        {(
-          [
-            ["all", "Toutes"],
-            ["int", "Couvertes"],
-            ["ext", "Plein air"],
-          ] as Array<[EnvFilter, string]>
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => changeFilters(() => setEnvFilter(key))}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-              envFilter === key
-                ? "bg-cyan-600 text-white shadow-sm"
-                : "bg-white/80 text-cyan-800 ring-1 ring-cyan-200 hover:bg-cyan-50"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Type de piscine">
+          {(
+            [
+              ["all", "Toutes"],
+              ["int", "Couvertes"],
+              ["ext", "Plein air"],
+            ] as Array<[EnvFilter, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => changeFilters(() => setEnvFilter(key))}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                envFilter === key
+                  ? "bg-cyan-600 text-white shadow-sm"
+                  : "bg-white/80 text-cyan-800 ring-1 ring-cyan-200 hover:bg-cyan-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Longueur de bassin">
+          <span className="text-xs font-medium text-sky-900/70">Bassin :</span>
+          {(
+            [
+              ["all", "Toutes longueurs"],
+              [25, "≥ 25 m"],
+              [50, "50 m"],
+            ] as Array<[LenFilter, string]>
+          ).map(([key, label]) => (
+            <button
+              key={String(key)}
+              type="button"
+              onClick={() => changeFilters(() => setLenFilter(key))}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                lenFilter === key
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-white/80 text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loadError && (
