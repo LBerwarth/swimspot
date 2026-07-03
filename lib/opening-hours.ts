@@ -9,17 +9,55 @@
  * interprétation potentiellement fausse.
  */
 
+import type { Locale } from "./i18n";
+
 const DAY_CODES = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
-const DAY_LABELS_FR = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"] as const;
 
 const MONTH_CODES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ] as const;
-const MONTH_LABELS_FR = [
-  "janv.", "févr.", "mars", "avr.", "mai", "juin",
-  "juil.", "août", "sept.", "oct.", "nov.", "déc.",
-] as const;
+
+/** Textes localisés des restitutions d'horaires. */
+const L10N: Record<
+  Locale,
+  {
+    days: readonly string[];
+    monthsShort: readonly string[];
+    monthsFull: readonly string[];
+    closed: string;
+    publicHolidays: string;
+    schoolHolidays: string;
+    allDay: string;
+    /** 570 → « 9h30 » (fr) / « 9:30 » (en). */
+    time: (minutes: number) => string;
+  }
+> = {
+  fr: {
+    days: ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"],
+    monthsShort: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
+    monthsFull: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    closed: "fermé",
+    publicHolidays: "jours fériés",
+    schoolHolidays: "vacances scolaires",
+    allDay: "24h/24, 7j/7",
+    time: (m) => {
+      const h = Math.floor(m / 60);
+      const mm = m % 60;
+      return mm === 0 ? `${h}h` : `${h}h${String(mm).padStart(2, "0")}`;
+    },
+  },
+  en: {
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    monthsFull: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    closed: "closed",
+    publicHolidays: "public holidays",
+    schoolHolidays: "school holidays",
+    allDay: "24/7",
+    time: (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`,
+  },
+};
 
 /** Plages d'ouverture par jour (0 = lundi … 6 = dimanche), en minutes depuis minuit. */
 export type WeekSchedule = Array<Array<[number, number]>>;
@@ -132,7 +170,10 @@ function applyRule(week: WeekSchedule, rawRule: string): boolean {
 }
 
 /** Renvoie les plannings, ou `null` si la chaîne dépasse les motifs gérés. */
-export function parseOpeningHours(value: string): ParsedOpeningHours | null {
+export function parseOpeningHours(
+  value: string,
+  locale: Locale = "fr",
+): ParsedOpeningHours | null {
   const cleaned = value.trim();
   if (!cleaned) return null;
   if (cleaned === "24/7") {
@@ -158,7 +199,7 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
     if (/^PH\s+(off|closed)$/i.test(rule)) continue;
     // Jours fériés avec horaires : restitué tel quel, sans interprétation.
     if (/^PH\b/.test(rule)) {
-      extras.push(prettifySegment(rule));
+      extras.push(prettifySegment(rule, locale));
       continue;
     }
     // « SH … » : planning des vacances scolaires.
@@ -185,9 +226,9 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
       continue;
     }
     // Autre règle bornée par des dates (« Oct 17-Nov 2 Mo-Fr 09:00-16:00 ») :
-    // restituée en français sans être appliquée à la semaine type.
+    // restituée dans la langue demandée sans être appliquée à la semaine type.
     if (MONTH_START_RE.test(rule)) {
-      extras.push(prettifySegment(rule));
+      extras.push(prettifySegment(rule, locale));
       continue;
     }
 
@@ -199,14 +240,9 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
   return { week, ...(holidayWeek ? { holidayWeek } : {}), closedPeriods, extras };
 }
 
-function formatTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
-}
-
-function formatRanges(ranges: Array<[number, number]>): string {
-  return ranges.map(([s, e]) => `${formatTime(s)}–${formatTime(e)}`).join(", ");
+function formatRanges(ranges: Array<[number, number]>, locale: Locale): string {
+  const { time } = L10N[locale];
+  return ranges.map(([s, e]) => `${time(s)}–${time(e)}`).join(", ");
 }
 
 export interface ScheduleLine {
@@ -215,7 +251,11 @@ export interface ScheduleLine {
 }
 
 /** Regroupe les jours consécutifs identiques : « lun–ven · 9h–19h ». */
-export function formatWeekFR(week: WeekSchedule): ScheduleLine[] {
+export function formatWeekFR(
+  week: WeekSchedule,
+  locale: Locale = "fr",
+): ScheduleLine[] {
+  const l10n = L10N[locale];
   const lines: ScheduleLine[] = [];
   let start = 0;
   while (start < 7) {
@@ -224,9 +264,10 @@ export function formatWeekFR(week: WeekSchedule): ScheduleLine[] {
     while (end + 1 < 7 && JSON.stringify(week[end + 1]) === key) end++;
     const days =
       start === end
-        ? DAY_LABELS_FR[start]
-        : `${DAY_LABELS_FR[start]}–${DAY_LABELS_FR[end]}`;
-    const hours = week[start].length === 0 ? "fermé" : formatRanges(week[start]);
+        ? l10n.days[start]
+        : `${l10n.days[start]}–${l10n.days[end]}`;
+    const hours =
+      week[start].length === 0 ? l10n.closed : formatRanges(week[start], locale);
     lines.push({ days, hours });
     start = end + 1;
   }
@@ -240,19 +281,27 @@ export function isOpenAt(week: WeekSchedule, now: Date): boolean {
   return week[day].some(([s, e]) => minutes >= s && minutes < e);
 }
 
-/** « fermé de juin à août » ou « fermé du 5 juin au 31 août ». */
-export function formatClosedPeriodFR(period: ClosedPeriod): string {
+/** « fermé de juin à août » / « closed from June to August ». */
+export function formatClosedPeriodFR(
+  period: ClosedPeriod,
+  locale: Locale = "fr",
+): string {
+  const months = L10N[locale].monthsFull;
   const monthsOnly = period.from.day === 1 && period.to.day === 31;
-  const MONTH_FULL = [
-    "janvier", "février", "mars", "avril", "mai", "juin",
-    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
-  ];
+  if (locale === "en") {
+    if (monthsOnly) {
+      return period.from.month === period.to.month
+        ? `closed in ${months[period.from.month]}`
+        : `closed from ${months[period.from.month]} to ${months[period.to.month]}`;
+    }
+    return `closed from ${months[period.from.month]} ${period.from.day} to ${months[period.to.month]} ${period.to.day}`;
+  }
   if (monthsOnly) {
     return period.from.month === period.to.month
-      ? `fermé en ${MONTH_FULL[period.from.month]}`
-      : `fermé de ${MONTH_FULL[period.from.month]} à ${MONTH_FULL[period.to.month]}`;
+      ? `fermé en ${months[period.from.month]}`
+      : `fermé de ${months[period.from.month]} à ${months[period.to.month]}`;
   }
-  return `fermé du ${period.from.day} ${MONTH_FULL[period.from.month]} au ${period.to.day} ${MONTH_FULL[period.to.month]}`;
+  return `fermé du ${period.from.day} ${months[period.from.month]} au ${period.to.day} ${months[period.to.month]}`;
 }
 
 /** `date` tombe-t-elle dans l'une des périodes de fermeture saisonnière ? */
@@ -266,32 +315,36 @@ export function isInClosedPeriod(periods: ClosedPeriod[], date: Date): boolean {
   });
 }
 
-/** Traduit un segment OSM en français lisible, sans l'interpréter. */
-function prettifySegment(segment: string): string {
+/** Traduit un segment OSM en texte lisible, sans l'interpréter. */
+function prettifySegment(segment: string, locale: Locale): string {
+  const l10n = L10N[locale];
   let out = segment.trim();
-  // Plages horaires : « 08:30-14:00 » → « 8h30–14h ».
+  // Plages horaires : « 08:30-14:00 » → « 8h30–14h » / « 8:30–14:00 ».
   out = out.replace(
     /(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/g,
     (_, h1, m1, h2, m2) =>
-      `${+h1}h${m1 === "00" ? "" : m1}–${+h2}h${m2 === "00" ? "" : m2}`,
+      `${l10n.time(+h1 * 60 + +m1)}–${l10n.time(+h2 * 60 + +m2)}`,
   );
-  out = out.replace(/(\d{1,2}):(\d{2})/g, (_, h, m) => `${+h}h${m === "00" ? "" : m}`);
-  // Mois : « Oct 17 » → « 17 oct. » (après traduction du code mois).
+  out = out.replace(/(\d{1,2}):(\d{2})(?!\d)/g, (_, h, m) => l10n.time(+h * 60 + +m));
+  // Mois : « Oct 17 » → « 17 oct. » (fr) après traduction du code mois.
   MONTH_CODES.forEach((code, i) => {
-    out = out.replace(new RegExp(`\\b${code}\\b`, "g"), MONTH_LABELS_FR[i]);
+    out = out.replace(new RegExp(`\\b${code}\\b`, "g"), l10n.monthsShort[i]);
   });
-  const monthAlt = MONTH_LABELS_FR.map((m) => m.replace(".", "\\.")).join("|");
-  out = out.replace(new RegExp(`(${monthAlt})\\s?(\\d{1,2})\\b`, "g"), "$2 $1");
-  // Jours : « Th-Fr » → « jeu–ven ».
+  if (locale === "fr") {
+    const monthAlt = l10n.monthsShort.map((m) => m.replace(".", "\\.")).join("|");
+    out = out.replace(new RegExp(`(${monthAlt})\\s?(\\d{1,2})\\b`, "g"), "$2 $1");
+  }
+  // Jours : « Th-Fr » → « jeu–ven » / « Thu–Fri ».
   DAY_CODES.forEach((code, i) => {
-    out = out.replace(new RegExp(`\\b${code}\\b`, "g"), DAY_LABELS_FR[i]);
+    out = out.replace(new RegExp(`\\b${code}\\b`, "g"), l10n.days[i]);
   });
-  out = out.replace(/(lun|mar|mer|jeu|ven|sam|dim)-(lun|mar|mer|jeu|ven|sam|dim)/g, "$1–$2");
+  const dayAlt = l10n.days.join("|");
+  out = out.replace(new RegExp(`(${dayAlt})-(${dayAlt})`, "g"), "$1–$2");
   // Divers.
-  out = out.replace(/\b(off|closed)\b/gi, "fermé");
-  out = out.replace(/\bPH\b/g, "jours fériés");
-  out = out.replace(/\bSH\b/g, "vacances scolaires");
-  out = out.replace(/\b24\/7\b/g, "24h/24, 7j/7");
+  out = out.replace(/\b(off|closed)\b/gi, l10n.closed);
+  out = out.replace(/\bPH\b/g, l10n.publicHolidays);
+  out = out.replace(/\bSH\b/g, l10n.schoolHolidays);
+  out = out.replace(/\b24\/7\b/g, l10n.allDay);
   // Tirets restants (séparateurs de dates comme « 17 oct.-2 nov. ») → tiret long.
   out = out.replace(/-/g, "–");
   return out;
@@ -299,11 +352,14 @@ function prettifySegment(segment: string): string {
 
 /**
  * Repli d'affichage pour une chaîne `opening_hours` non interprétable :
- * une ligne en français par règle, sans garantie sémantique.
+ * une ligne lisible par règle, sans garantie sémantique.
  */
-export function prettifyOpeningHours(value: string): string[] {
+export function prettifyOpeningHours(
+  value: string,
+  locale: Locale = "fr",
+): string[] {
   return value
     .split(/;|\|\|/)
-    .map((seg) => prettifySegment(seg))
+    .map((seg) => prettifySegment(seg, locale))
     .filter(Boolean);
 }

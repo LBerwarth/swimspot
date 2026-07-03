@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDict } from "@/components/locale-provider";
 
 export interface UserLocation {
   lat: number;
@@ -24,6 +25,7 @@ interface Props {
  * l'API adresse nationale (api-adresse.data.gouv.fr, gratuite, France).
  */
 export function LocationSearch({ value, onChange }: Props) {
+  const dict = useDict();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -96,7 +98,7 @@ export function LocationSearch({ value, onChange }: Props) {
         }
       }
       if (adresse.status === "rejected" && photon.status === "rejected") {
-        setError("Recherche d'adresse indisponible pour le moment.");
+        setError(dict.errSearchDown);
         return;
       }
 
@@ -122,7 +124,7 @@ export function LocationSearch({ value, onChange }: Props) {
 
   const locateMe = () => {
     if (!navigator.geolocation) {
-      setError("La géolocalisation n'est pas disponible sur cet appareil.");
+      setError(dict.errNoGeolocation);
       return;
     }
     setLocating(true);
@@ -133,14 +135,12 @@ export function LocationSearch({ value, onChange }: Props) {
         onChange({
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
-          label: "Ma position",
+          label: dict.locateButton.replace("📍 ", ""),
         });
       },
       () => {
         setLocating(false);
-        setError(
-          "Position refusée ou indisponible — cherchez une adresse à la place.",
-        );
+        setError(dict.errGeoDenied);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
@@ -159,9 +159,9 @@ export function LocationSearch({ value, onChange }: Props) {
               if (e.key === "Enter" && suggestions.length > 0) pick(suggestions[0]);
               if (e.key === "Escape") setOpen(false);
             }}
-            placeholder={value ? value.label : "Adresse, ville, code postal…"}
+            placeholder={value ? value.label : dict.searchPlaceholder}
             className="w-full rounded-xl border border-fuchsia-200 bg-white/90 px-4 py-2.5 text-sm shadow-sm outline-none placeholder:text-slate-400 focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-200"
-            aria-label="Rechercher une adresse"
+            aria-label={dict.searchAria}
           />
           {open && (
             <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-fuchsia-200 bg-white shadow-lg">
@@ -185,7 +185,7 @@ export function LocationSearch({ value, onChange }: Props) {
           disabled={locating}
           className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
         >
-          {locating ? "Localisation…" : "📍 Autour de moi"}
+          {locating ? dict.locating : dict.locateButton}
         </button>
       </div>
       {error && <p className="mt-1.5 text-xs text-rose-700">{error}</p>}

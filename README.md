@@ -1,11 +1,14 @@
-# Piscines de France
+# Swimspot
 
-Trouvez les piscines publiques autour de vous, partout en France : choisissez un
-rayon (1 à 50 km), voyez les bassins, les horaires et tarifs quand ils sont
-connus, sur carte et en liste.
+Trouvez les piscines publiques autour de vous — France et Angleterre, d'autres
+pays européens à venir : choisissez un rayon (1 à 50 km), voyez les bassins,
+les horaires et tarifs quand ils sont connus, sur carte et en liste.
+Interface en français et en anglais (`/fr`, `/en`, redirection selon la langue
+du navigateur via `proxy.ts`).
 
 Application sœur de [toulouse-piscines](https://toulouse-piscines.vercel.app/),
-étendue à toute la France.
+étendue à l'Europe. (Dossier/repo encore nommé `piscines-france` — renommer au
+moment de la mise en ligne.)
 
 ## Données
 

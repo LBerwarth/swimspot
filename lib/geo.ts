@@ -16,9 +16,12 @@ export function haversineKm(
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
 }
 
-/** Formate une distance à la française : « 850 m », « 3,2 km », « 12 km ». */
-export function formatDistance(km: number): string {
+/** « 850 m », « 3,2 km » (fr) / « 3.2 km » (en), « 12 km ». */
+export function formatDistance(km: number, locale: string = "fr"): string {
   if (km < 1) return `${Math.round(km * 1000 / 10) * 10} m`;
-  if (km < 10) return `${km.toFixed(1).replace(".", ",")} km`;
+  if (km < 10) {
+    const value = km.toFixed(1);
+    return `${locale === "fr" ? value.replace(".", ",") : value} km`;
+  }
   return `${Math.round(km)} km`;
 }

@@ -10,6 +10,8 @@ interface Props {
   center: [number, number];
   radiusKm: number;
   pools: PoolWithDistance[];
+  /** Clic sur le point d'une piscine : cible sa fiche dans la liste. */
+  onSelect?: (poolId: string) => void;
 }
 
 function escapeHtml(value: string): string {
@@ -36,7 +38,7 @@ const POOL_ICON = () =>
     iconAnchor: [7, 7],
   });
 
-export function PoolMap({ center, radiusKm, pools }: Props) {
+export function PoolMap({ center, radiusKm, pools, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -87,9 +89,10 @@ export function PoolMap({ center, radiusKm, pools }: Props) {
         `<strong>${escapeHtml(pool.name)}</strong><br>` +
           `${escapeHtml(pool.city)} · ${formatDistance(pool.distanceKm)}`,
       );
+      if (onSelect) marker.on("click", () => onSelect(pool.id));
       layer.addLayer(marker);
     }
-  }, [center, radiusKm, pools]);
+  }, [center, radiusKm, pools, onSelect]);
 
   return (
     <div

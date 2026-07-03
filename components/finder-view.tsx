@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type {
   CountryIndex,
@@ -22,6 +22,7 @@ import {
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
 import { useFavorites } from "@/components/use-favorites";
+import { useDict } from "@/components/locale-provider";
 
 const PoolMap = dynamic(() => import("@/components/pool-map"), {
   ssr: false,
@@ -62,6 +63,7 @@ function countriesFor(index: CountryIndex, loc: UserLocation): string[] {
 }
 
 export function FinderView() {
+  const dict = useDict();
   const [index, setIndex] = useState<CountryIndex | null>(null);
   const [poolsByCountry, setPoolsByCountry] = useState<Map<string, Pool[]>>(
     () => new Map(),
@@ -75,6 +77,8 @@ export function FinderView() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const favorites = useFavorites();
   const [listLimit, setListLimit] = useState(LIST_STEP);
+  /** Piscine ciblée depuis la carte : mise en avant + défilement. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   // null = pas encore chargées depuis localStorage : l'effet de persistance
   // ne doit pas écraser la liste stockée avec un tableau vide au montage.
   const [savedAddresses, setSavedAddresses] = useState<UserLocation[] | null>(
@@ -120,6 +124,15 @@ export function FinderView() {
       .catch(() => setLoadError(true));
   }, []);
 
+  useEffect(() => {
+    if (savedAddresses === null) return;
+    try {
+      localStorage.setItem(ADDRESSES_KEY, JSON.stringify(savedAddresses));
+    } catch {
+      // Quota ou navigation privée : la persistance est optionnelle.
+    }
+  }, [savedAddresses]);
+
   // Charge les fichiers des pays couvrant la position (zones frontalières :
   // plusieurs pays possibles). Les pays déjà chargés sont conservés.
   useEffect(() => {
@@ -159,15 +172,6 @@ export function FinderView() {
     countriesFor(index, location).some((code) => !poolsByCountry.has(code));
 
   useEffect(() => {
-    if (savedAddresses === null) return;
-    try {
-      localStorage.setItem(ADDRESSES_KEY, JSON.stringify(savedAddresses));
-    } catch {
-      // Quota ou navigation privée : la persistance est optionnelle.
-    }
-  }, [savedAddresses]);
-
-  useEffect(() => {
     if (!location) return;
     try {
       localStorage.setItem(
@@ -191,7 +195,7 @@ export function FinderView() {
       .sort((a, b) => a.distanceKm - b.distanceKm);
   }, [allPools, location, radiusKm]);
 
-  /** Piscines du rayon après filtres type/longueur. */
+  /** Piscines du rayon après filtres type/longueur/ouverture/favoris. */
   const nearby: PoolWithDistance[] = useMemo(() => {
     return inRadius
       .filter((pool) => !favoritesOnly || favorites.includes(pool.id))
@@ -252,7 +256,28 @@ export function FinderView() {
   const changeFilters = (apply: () => void) => {
     apply();
     setListLimit(LIST_STEP);
+    setSelectedId(null);
   };
+
+  /** Clic sur un point de la carte : déplie la liste si besoin et défile. */
+  const selectPool = useCallback(
+    (id: string) => {
+      const idx = displayed.findIndex((p) => p.id === id);
+      if (idx < 0) return;
+      if (idx >= listLimit) {
+        setListLimit(Math.ceil((idx + 1) / LIST_STEP) * LIST_STEP);
+      }
+      setSelectedId(id);
+    },
+    [displayed, listLimit],
+  );
+
+  useEffect(() => {
+    if (!selectedId) return;
+    document
+      .getElementById(`pool-${selectedId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedId, listLimit]);
 
   const isCurrentSaved =
     location !== null &&
@@ -269,12 +294,21 @@ export function FinderView() {
     setSavedAddresses((prev) => (prev ?? []).filter((a) => a.label !== label));
   };
 
+  const coveredCountries = index
+    ? index.countries
+        .map(
+          (c) =>
+            `${dict.countryNames[c.code] ?? c.code.toUpperCase()} (${c.count.toLocaleString()})`,
+        )
+        .join(" · ")
+    : "";
+
   return (
     <div className="space-y-4">
       <LocationSearch value={location} onChange={(l) => changeFilters(() => setLocation(l))} />
 
       {((savedAddresses?.length ?? 0) > 0 || location) && (
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Adresses enregistrées">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={dict.savedAddressesAria}>
           {(savedAddresses ?? []).map((address) => (
             <span
               key={address.label}
@@ -295,7 +329,7 @@ export function FinderView() {
               <button
                 type="button"
                 onClick={() => removeAddress(address.label)}
-                aria-label={`Supprimer l'adresse ${address.label}`}
+                aria-label={dict.removeAddress(address.label)}
                 className={`rounded-full px-1 leading-none ${
                   location?.label === address.label
                     ? "hover:bg-violet-500"
@@ -311,17 +345,17 @@ export function FinderView() {
               type="button"
               onClick={saveCurrentAddress}
               className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-fuchsia-800 ring-1 ring-dashed ring-fuchsia-300 transition hover:bg-fuchsia-50"
-              title="Garder cette adresse sous la main"
             >
-              ☆ Enregistrer « <span className="inline-block max-w-40 truncate align-bottom">{location.label}</span> »
+              {dict.saveAddress}{" "}
+              « <span className="inline-block max-w-40 truncate align-bottom">{location.label}</span> »
             </button>
           )}
         </div>
       )}
 
       <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Rayon de recherche">
-        <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Rayon :</span>
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={dict.radiusAria}>
+        <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">{dict.radiusLabel}</span>
         {RADIUS_OPTIONS_KM.map((km) => (
           <button
             key={km}
@@ -338,13 +372,13 @@ export function FinderView() {
         ))}
       </div>
 
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Type de piscine">
-          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Type :</span>
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={dict.typeAria}>
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">{dict.typeLabel}</span>
           {(
             [
-              ["all", "Toutes"],
-              ["int", "Couvertes"],
-              ["ext", "Plein air"],
+              ["all", dict.typeAll],
+              ["int", dict.typeIndoor],
+              ["ext", dict.typeOutdoor],
             ] as Array<[EnvFilter, string]>
           ).map(([key, label]) => (
             <button
@@ -365,15 +399,15 @@ export function FinderView() {
         <div
           className="flex flex-wrap items-center gap-1.5"
           role="group"
-          aria-label="Ouverture"
-          title="D'après les horaires connus (une partie des piscines seulement)"
+          aria-label={dict.openAria}
+          title={dict.openTitle}
         >
-          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Ouvertes :</span>
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">{dict.openLabel}</span>
           {(
             [
-              ["all", "Peu importe"],
-              ["now", "Maintenant"],
-              ["today", "Aujourd'hui"],
+              ["all", dict.openAll],
+              ["now", dict.openNow],
+              ["today", dict.openToday],
             ] as Array<[OpenFilter, string]>
           ).map(([key, label]) => (
             <button
@@ -391,12 +425,12 @@ export function FinderView() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Favoris">
-          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Favoris :</span>
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={dict.favAria}>
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">{dict.favLabel}</span>
           {(
             [
-              [false, "Toutes"],
-              [true, "★ Uniquement"],
+              [false, dict.favAll],
+              [true, dict.favOnly],
             ] as Array<[boolean, string]>
           ).map(([key, label]) => (
             <button
@@ -414,11 +448,11 @@ export function FinderView() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Longueur de bassin">
-          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Bassin :</span>
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={dict.lenAria}>
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">{dict.lenLabel}</span>
           {(
             [
-              ["all", "Toutes longueurs"],
+              ["all", dict.lenAll],
               [25, "25 m"],
               [50, "50 m"],
             ] as Array<[LenFilter, string]>
@@ -441,23 +475,18 @@ export function FinderView() {
 
       {loadError && (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200">
-          Impossible de charger la liste des piscines. Rechargez la page.
+          {dict.loadError}
         </p>
       )}
 
       {!location && !loadError && (
         <div className="rounded-2xl border border-dashed border-fuchsia-300 bg-white/60 px-5 py-8 text-center text-sm text-slate-600">
           <p className="text-2xl">🏊</p>
-          <p className="mt-2 font-medium text-slate-800">Où cherchez-vous une piscine ?</p>
-          <p className="mt-1">
-            Touchez « 📍 Autour de moi » ou saisissez une adresse ci-dessus.
-          </p>
+          <p className="mt-2 font-medium text-slate-800">{dict.emptyTitle}</p>
+          <p className="mt-1">{dict.emptyHint}</p>
           {index && (
             <p className="mt-3 text-xs text-slate-400">
-              {index.countries
-                .reduce((sum, c) => sum + c.count, 0)
-                .toLocaleString("fr-FR")}{" "}
-              piscines publiques référencées.
+              {dict.coveredLabel} {coveredCountries}
             </p>
           )}
         </div>
@@ -465,16 +494,21 @@ export function FinderView() {
 
       {location && center && (
         <>
-          <PoolMap center={center} radiusKm={radiusKm} pools={displayed} />
+          <PoolMap
+            center={center}
+            radiusKm={radiusKm}
+            pools={displayed}
+            onSelect={selectPool}
+          />
 
           <p className="text-sm text-slate-600" aria-live="polite">
             {index === null || loadingPools
-              ? "Chargement des piscines…"
+              ? dict.loadingPools
               : displayed.length === 0
                 ? favoritesOnly
-                  ? "Aucune piscine favorite dans ce rayon — touchez ☆ sur une piscine pour l'ajouter."
-                  : "Aucune piscine dans ce rayon — essayez un rayon plus grand."
-                : `${displayed.length} piscine${displayed.length > 1 ? "s" : ""} à moins de ${radiusKm} km à vol d'oiseau de ${location.label}.`}
+                  ? dict.noneFavorite
+                  : dict.noneInRadius
+                : dict.countLine(displayed.length, radiusKm, location.label)}
           </p>
 
           <div className="space-y-3">
@@ -483,6 +517,7 @@ export function FinderView() {
                 key={pool.id}
                 pool={pool}
                 live={live?.get(pool.id) ?? null}
+                selected={pool.id === selectedId}
               />
             ))}
           </div>
@@ -493,8 +528,14 @@ export function FinderView() {
               onClick={() => setListLimit((n) => n + LIST_STEP)}
               className="w-full rounded-xl bg-white/80 px-4 py-2.5 text-sm font-medium text-fuchsia-800 ring-1 ring-fuchsia-200 transition hover:bg-fuchsia-50"
             >
-              Afficher plus ({displayed.length - listLimit} restantes)
+              {dict.showMore(displayed.length - listLimit)}
             </button>
+          )}
+
+          {index && (
+            <p className="pt-2 text-center text-xs text-slate-400">
+              {dict.coveredLabel} {coveredCountries}
+            </p>
           )}
         </>
       )}
