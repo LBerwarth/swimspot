@@ -49,12 +49,27 @@ dans la source officielle — mieux que la France.
 
 ## 4. Couverture OSM par pays (mesurée le 3 juillet 2026)
 
-Requête : `leisure=sports_centre` + `sport~swimming` par pays, et part avec
-`opening_hours`. Référence France : 2 840 équipements, 12 % avec horaires.
+Requête Overpass : `leisure=sports_centre` + `sport~swimming` par pays, et
+part avec `opening_hours`.
 
-| Pays | Équipements OSM | Avec horaires |
-|---|---|---|
-| (mesures en cours — tableau complété ci-dessous) | | |
+| Pays | Équipements OSM | Avec horaires | % |
+|---|---|---|---|
+| 🇫🇷 France | 2 840 | 353 | 12 % |
+| 🇩🇪 Allemagne | 2 045 | 591 | **29 %** |
+| 🇪🇸 Espagne | 1 912 | 92 | 4,8 % |
+| 🇮🇹 Italie | 1 017 | 68 | 6,7 % |
+| 🇬🇧 Royaume-Uni | 806 | 112 | 14 % |
+| 🇨🇭 Suisse | 533 | 108 | **20 %** |
+| 🇳🇱 Pays-Bas | 474 | 29 | 6,1 % |
+
+*(BE/AT/PL/SE : requêtes non abouties le jour de la mesure — serveur Overpass
+saturé ; à compléter.)*
+
+Lecture : l'espace germanophone (DE 29 %, CH 20 %) a la meilleure culture du
+tag `opening_hours` — combiné à Bäderleben, l'Allemagne offrirait une
+couverture horaires/tarifs *supérieure* à la France actuelle. Le sud (ES 5 %,
+IT 7 %) dépendra surtout des liens vers les sites officiels, comme les
+piscines françaises non renseignées aujourd'hui.
 
 ## 5. Architecture cible
 
@@ -111,3 +126,17 @@ public/data/
   amélioration ultérieure, pas un prérequis.
 - **Serveurs publics** (Photon, tuiles OSM) : usage personnel OK ; à fort
   trafic, prévoir auto-hébergement ou fournisseur payant.
+
+## Sources consultées (3 juillet 2026)
+
+- [Active Places Power — downloads](https://www.activeplacespower.com/pages/downloads) ·
+  [Sport England open data](https://www.sportengland.org/research-and-data/data)
+- [Bäderleben](https://baederleben.de) ·
+  [présentation LSV-BW](https://www.lsvbw.de/baederleben-datenbank-der-schwimmbaeder-und-badeorte-in-deutschland/)
+- [Database SportAccommodaties — Mulier Instituut](https://www.mulierinstituut.nl/programmas-aanbod/database-sportaccommodaties-dsa/)
+- [Sportaccommodaties in Vlaanderen (POI service)](https://data.gov.be/nl/dataset/6e1686a2-4c8c-4a30-93da-0bff7cae21b6)
+- [Banca Dati Impianti Sportivi — Sport e Salute](https://dbimpiantisportivi.sportesalute.eu/) ·
+  [censimento](https://www.sportesalute.eu/impianti-sportivi/censimento.html)
+- [CNID — Consejo Superior de Deportes](https://www.csd.gob.es/en/csd/facilities/national-census-sports-facilities) ·
+  [datos.gob.es](https://datos.gob.es/es/catalogo/l01281150-censo-de-instalaciones-deportivas)
+- Mesures OSM : Overpass API (overpass-api.de / overpass.kumi.systems)
