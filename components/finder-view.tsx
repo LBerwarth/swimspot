@@ -16,6 +16,7 @@ import {
 } from "@/lib/toulouse-live";
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
+import { useFavorites } from "@/components/use-favorites";
 
 const PoolMap = dynamic(() => import("@/components/pool-map"), {
   ssr: false,
@@ -49,6 +50,8 @@ export function FinderView() {
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
   const [lenFilter, setLenFilter] = useState<LenFilter>("all");
   const [openFilter, setOpenFilter] = useState<OpenFilter>("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const favorites = useFavorites();
   const [listLimit, setListLimit] = useState(LIST_STEP);
   // null = pas encore chargées depuis localStorage : l'effet de persistance
   // ne doit pas écraser la liste stockée avec un tableau vide au montage.
@@ -131,6 +134,7 @@ export function FinderView() {
   /** Piscines du rayon après filtres type/longueur. */
   const nearby: PoolWithDistance[] = useMemo(() => {
     return inRadius
+      .filter((pool) => !favoritesOnly || favorites.includes(pool.id))
       .filter((pool) =>
         envFilter === "all"
           ? true
@@ -174,7 +178,7 @@ export function FinderView() {
         const day = (now.getDay() + 6) % 7;
         return weeks.some((week) => week[day].length > 0);
       });
-  }, [inRadius, envFilter, lenFilter, openFilter, live]);
+  }, [inRadius, envFilter, lenFilter, openFilter, live, favoritesOnly, favorites]);
 
   // Distance à vol d'oiseau partout : simple, cohérente avec le cercle de la
   // carte (les distances routières testées se sont révélées peu intuitives).
@@ -296,6 +300,19 @@ export function FinderView() {
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => changeFilters(() => setFavoritesOnly((v) => !v))}
+            aria-pressed={favoritesOnly}
+            title="N'afficher que les piscines marquées d'une étoile"
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+              favoritesOnly
+                ? "bg-amber-500 text-white shadow-sm"
+                : "bg-white/80 text-amber-700 ring-1 ring-amber-300 hover:bg-amber-50"
+            }`}
+          >
+            ★ Favoris
+          </button>
         </div>
 
         <div
@@ -382,7 +399,9 @@ export function FinderView() {
             {dataset === null
               ? "Chargement des piscines…"
               : displayed.length === 0
-                ? "Aucune piscine dans ce rayon — essayez un rayon plus grand."
+                ? favoritesOnly
+                  ? "Aucune piscine favorite dans ce rayon — touchez ☆ sur une piscine pour l'ajouter."
+                  : "Aucune piscine dans ce rayon — essayez un rayon plus grand."
                 : `${displayed.length} piscine${displayed.length > 1 ? "s" : ""} à moins de ${radiusKm} km à vol d'oiseau de ${location.label}.`}
           </p>
 

@@ -7,6 +7,7 @@ import {
   isOpenNowLive,
   type LivePoolStatus,
 } from "@/lib/toulouse-live";
+import { toggleFavorite, useFavorites } from "@/components/use-favorites";
 import {
   formatClosedPeriodFR,
   formatWeekFR,
@@ -43,6 +44,8 @@ export function PoolCard({
   pool: PoolWithDistance;
   live?: LivePoolStatus | null;
 }) {
+  const favorites = useFavorites();
+  const isFavorite = favorites.includes(pool.id);
   const parsed = pool.hours ? parseOpeningHours(pool.hours) : null;
   // Fermeture saisonnière en cours (ex. piscine d'hiver fermée l'été) :
   // prime sur tout le reste.
@@ -77,12 +80,31 @@ export function PoolCard({
             {pool.cp} {pool.city}
           </p>
         </div>
-        <span
-          className="shrink-0 rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-semibold text-fuchsia-900"
-          title="Distance à vol d'oiseau"
-        >
-          {formatDistance(pool.distanceKm)}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span
+            className="rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-semibold text-fuchsia-900"
+            title="Distance à vol d'oiseau"
+          >
+            {formatDistance(pool.distanceKm)}
+          </span>
+          <button
+            type="button"
+            onClick={() => toggleFavorite(pool.id)}
+            aria-pressed={isFavorite}
+            aria-label={
+              isFavorite
+                ? `Retirer ${pool.name} des favoris`
+                : `Ajouter ${pool.name} aux favoris`
+            }
+            className={`text-lg leading-none transition ${
+              isFavorite
+                ? "text-amber-500 hover:text-amber-600"
+                : "text-slate-300 hover:text-amber-400"
+            }`}
+          >
+            {isFavorite ? "★" : "☆"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
