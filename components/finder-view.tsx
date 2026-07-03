@@ -10,6 +10,11 @@ import {
   parseOpeningHours,
 } from "@/lib/opening-hours";
 import { fetchStreetDistancesKm } from "@/lib/street-distance";
+import {
+  fetchToulouseLive,
+  isOpenNowLive,
+  type LivePoolStatus,
+} from "@/lib/toulouse-live";
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
 
@@ -57,6 +62,18 @@ export function FinderView() {
   const [savedAddresses, setSavedAddresses] = useState<UserLocation[] | null>(
     null,
   );
+  // Statut du jour en direct (piscines de Toulouse), superposé aux données OSM.
+  const [live, setLive] = useState<Map<string, LivePoolStatus> | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchToulouseLive(controller.signal)
+      .then(setLive)
+      .catch(() => {
+        // Service indisponible : on reste sur les horaires OSM.
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let saved: SavedSearch | null = null;
@@ -138,10 +155,17 @@ export function FinderView() {
       // s'applique aujourd'hui). Horaires inconnus = masquée.
       .filter((pool) => {
         if (openFilter === "all") return true;
+        const now = new Date();
+        // Statut live (Toulouse) : source la plus fiable, prime sur OSM.
+        const liveStatus = live?.get(pool.id);
+        if (liveStatus) {
+          return openFilter === "now"
+            ? isOpenNowLive(liveStatus, now)
+            : liveStatus.openToday;
+        }
         if (!pool.hours) return false;
         const parsed = parseOpeningHours(pool.hours);
         if (!parsed) return false;
-        const now = new Date();
         // Fermeture saisonnière en cours (ex. piscine d'hiver l'été).
         if (isInClosedPeriod(parsed.closedPeriods, now)) return false;
         const weeks = [
@@ -154,7 +178,7 @@ export function FinderView() {
         const day = (now.getDay() + 6) % 7;
         return weeks.some((week) => week[day].length > 0);
       });
-  }, [inRadius, envFilter, lenFilter, openFilter]);
+  }, [inRadius, envFilter, lenFilter, openFilter, live]);
 
   const streetKey = useMemo(
     () => (location ? `${location.lat},${location.lon}:${radiusKm}` : ""),
@@ -399,7 +423,11 @@ export function FinderView() {
 
           <div className="space-y-3">
             {displayed.slice(0, listLimit).map((pool) => (
-              <PoolCard key={pool.id} pool={pool} />
+              <PoolCard
+                key={pool.id}
+                pool={pool}
+                live={live?.get(pool.id) ?? null}
+              />
             ))}
           </div>
 

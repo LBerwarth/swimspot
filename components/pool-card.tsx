@@ -3,6 +3,11 @@
 import type { PoolWithDistance } from "@/lib/types";
 import { formatDistance } from "@/lib/geo";
 import {
+  formatSlotTime,
+  isOpenNowLive,
+  type LivePoolStatus,
+} from "@/lib/toulouse-live";
+import {
   formatClosedPeriodFR,
   formatWeekFR,
   isInClosedPeriod,
@@ -31,7 +36,13 @@ function WeekLines({ week }: { week: WeekSchedule }) {
   );
 }
 
-export function PoolCard({ pool }: { pool: PoolWithDistance }) {
+export function PoolCard({
+  pool,
+  live = null,
+}: {
+  pool: PoolWithDistance;
+  live?: LivePoolStatus | null;
+}) {
   const parsed = pool.hours ? parseOpeningHours(pool.hours) : null;
   // Fermeture saisonnière en cours (ex. piscine d'hiver fermée l'été) :
   // prime sur tout le reste.
@@ -102,7 +113,45 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
       </div>
 
       <div className="mt-3 text-sm">
-        {parsed ? (
+        {live && (
+          <div className="mb-2">
+            {live.openToday ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  isOpenNowLive(live, new Date())
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {isOpenNowLive(live, new Date())
+                  ? "Ouverte en ce moment"
+                  : "Fermée en ce moment"}
+              </span>
+            ) : (
+              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                Fermée aujourd&apos;hui
+              </span>
+            )}
+            {live.openToday && live.slots.length > 0 && (
+              <p className="mt-1.5 text-xs text-slate-700">
+                <span className="font-medium">Aujourd&apos;hui :</span>{" "}
+                {live.slots
+                  .map(
+                    (s) => `${formatSlotTime(s.start)}–${formatSlotTime(s.end)}`,
+                  )
+                  .join(", ")}
+              </p>
+            )}
+            {!live.openToday && live.closureReason && (
+              <p className="mt-1.5 text-xs text-rose-800/90">{live.closureReason}</p>
+            )}
+            <p className="mt-1 text-[10px] text-slate-400">
+              Statut du jour en direct — metropole.toulouse.fr
+            </p>
+          </div>
+        )}
+        {!live &&
+          (parsed ? (
           <div>
             {seasonalClosed ? (
               <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
@@ -166,7 +215,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
           <p className="text-xs italic text-slate-400">
             Horaires non renseignés — vérifiez sur le site officiel.
           </p>
-        )}
+        ))}
         {tarif && (
           <p className="mt-1.5 text-xs text-slate-700">
             <span className="font-medium">Tarif :</span> {tarif}
@@ -183,10 +232,10 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
         >
           Itinéraire ↗
         </a>
-        {pool.website ? (
+        {pool.website || live?.url ? (
           <a
             className="text-fuchsia-700 underline-offset-2 hover:underline"
-            href={pool.website}
+            href={pool.website ?? live!.url}
             target="_blank"
             rel="noreferrer"
           >

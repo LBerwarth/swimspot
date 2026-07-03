@@ -27,6 +27,13 @@ piscines, tarifs ~2 %, site web ~20 %. C'est l'état de l'open data français �
 l'interface l'assume en affichant « non renseigné » et un lien vers le site
 officiel plutôt qu'une information inventée.
 
+**Superposition live Toulouse** : les piscines toulousaines reçoivent leur
+statut du jour réel (fermetures estivales et exceptionnelles comprises) depuis
+l'API `/api/status` de toulouse-piscines, qui analyse le site de la métropole
+toutes les ~30 min. Ce statut prime sur les horaires OSM (badge, filtres
+« ouvertes », créneaux du jour). En dev, pointez
+`NEXT_PUBLIC_TOULOUSE_STATUS_URL` vers `http://localhost:3001/api/status`.
+
 Le champ `country` du schéma prépare une éventuelle extension européenne
 (OSM couvre l'Europe ; il faudrait remplacer Data ES et l'API adresse par des
 équivalents par pays).
