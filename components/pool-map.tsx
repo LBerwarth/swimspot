@@ -64,6 +64,13 @@ export function PoolMap({ center, radiusKm, pools }: Props) {
     if (!map || !layer) return;
     layer.clearLayers();
 
+    // Définit la vue (y compris la toute première : tant que la carte n'a pas
+    // de vue, Leaflet diffère l'ajout réel des couches et circle.getBounds()
+    // planterait). Les limites sont donc calculées sans passer par la couche.
+    map.fitBounds(L.latLng(center).toBounds(radiusKm * 2000), {
+      padding: [16, 16],
+    });
+
     const circle = L.circle(center, {
       radius: radiusKm * 1000,
       color: "#0284c7",
@@ -82,8 +89,6 @@ export function PoolMap({ center, radiusKm, pools }: Props) {
       );
       layer.addLayer(marker);
     }
-
-    map.fitBounds(circle.getBounds(), { padding: [16, 16] });
   }, [center, radiusKm, pools]);
 
   return (
