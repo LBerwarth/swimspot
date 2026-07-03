@@ -27,9 +27,14 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${outfit.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        {/* Photo d'eau de piscine en fond, adoucie pour la lisibilité */}
         <div
           aria-hidden
-          className="fixed inset-0 -z-10 bg-gradient-to-b from-[#dcf0fb] via-[#e8f5fc] to-[#c9e4f6]"
+          className="fixed inset-0 -z-10 bg-[url('/eau.jpg')] bg-cover bg-center"
+        />
+        <div
+          aria-hidden
+          className="fixed inset-0 -z-10 bg-gradient-to-b from-[#e4f0fc]/86 via-[#cfe2f7]/93 to-[#bcd6f0]/98"
         />
         {children}
       </body>

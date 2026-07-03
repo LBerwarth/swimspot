@@ -19,7 +19,7 @@ const LIST_STEP = 40;
 const STORAGE_KEY = "pf:search";
 
 type EnvFilter = "all" | "int" | "ext";
-/** Longueur minimale de bassin en mètres, ou pas de contrainte. */
+/** Classe de longueur de bassin : 25 = 25 à <50 m, 50 = 50 m et plus. */
 type LenFilter = "all" | 25 | 50;
 
 interface SavedSearch {
@@ -84,7 +84,11 @@ export function FinderView() {
       )
       // Longueur inconnue = piscine masquée par le filtre : on ne promet pas
       // un bassin de 25 m sans donnée.
-      .filter((pool) => lenFilter === "all" || (pool.len ?? 0) >= lenFilter)
+      .filter((pool) => {
+        if (lenFilter === "all") return true;
+        const len = pool.len ?? 0;
+        return lenFilter === 50 ? len >= 50 : len >= 25 && len < 50;
+      })
       .sort((a, b) => a.distanceKm - b.distanceKm);
   }, [dataset, location, radiusKm, envFilter, lenFilter]);
 
@@ -149,7 +153,7 @@ export function FinderView() {
           {(
             [
               ["all", "Toutes longueurs"],
-              [25, "≥ 25 m"],
+              [25, "25 m"],
               [50, "50 m"],
             ] as Array<[LenFilter, string]>
           ).map(([key, label]) => (
