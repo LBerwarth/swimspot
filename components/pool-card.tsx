@@ -165,7 +165,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
         >
           Itinéraire ↗
         </a>
-        {pool.website && (
+        {pool.website ? (
           <a
             className="text-fuchsia-700 underline-offset-2 hover:underline"
             href={pool.website}
@@ -173,6 +173,17 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
             rel="noreferrer"
           >
             Site web ↗
+          </a>
+        ) : (
+          <a
+            className="text-fuchsia-700 underline-offset-2 hover:underline"
+            href={`https://www.google.com/search?q=${encodeURIComponent(
+              `piscine ${pool.name} ${pool.city} horaires tarifs`,
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Rechercher le site ↗
           </a>
         )}
         {pool.phone && (

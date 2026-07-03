@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { PoolDataset, PoolWithDistance } from "@/lib/types";
 import { haversineKm } from "@/lib/geo";
+import { isOpenAt, parseOpeningHours } from "@/lib/opening-hours";
 import { fetchStreetDistancesKm } from "@/lib/street-distance";
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
@@ -22,6 +23,8 @@ const STORAGE_KEY = "pf:search";
 type EnvFilter = "all" | "int" | "ext";
 /** Classe de longueur de bassin : 25 = 25 à <50 m, 50 = 50 m et plus. */
 type LenFilter = "all" | 25 | 50;
+/** Ouverture : maintenant, à un moment aujourd'hui, ou peu importe. */
+type OpenFilter = "all" | "now" | "today";
 
 interface SavedSearch {
   location: UserLocation;
@@ -35,6 +38,7 @@ export function FinderView() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
   const [lenFilter, setLenFilter] = useState<LenFilter>("all");
+  const [openFilter, setOpenFilter] = useState<OpenFilter>("all");
   const [listLimit, setListLimit] = useState(LIST_STEP);
   // Résultat OSRM, étiqueté par la recherche (position + rayon) qui l'a produit :
   // un résultat d'une recherche précédente est simplement ignoré.
@@ -102,8 +106,27 @@ export function FinderView() {
         if (lenFilter === "all") return true;
         const len = pool.len ?? 0;
         return lenFilter === 50 ? len >= 50 : len >= 25 && len < 50;
+      })
+      // Ouverture : horaires connus et ouverts selon au moins un des plannings
+      // (semaine type ou vacances scolaires — on ne sait pas toujours lequel
+      // s'applique aujourd'hui). Horaires inconnus = masquée.
+      .filter((pool) => {
+        if (openFilter === "all") return true;
+        if (!pool.hours) return false;
+        const parsed = parseOpeningHours(pool.hours);
+        if (!parsed) return false;
+        const now = new Date();
+        const weeks = [
+          parsed.week,
+          ...(parsed.holidayWeek ? [parsed.holidayWeek] : []),
+        ];
+        if (openFilter === "now") {
+          return weeks.some((week) => isOpenAt(week, now));
+        }
+        const day = (now.getDay() + 6) % 7;
+        return weeks.some((week) => week[day].length > 0);
       });
-  }, [inRadius, envFilter, lenFilter]);
+  }, [inRadius, envFilter, lenFilter, openFilter]);
 
   const streetKey = useMemo(
     () => (location ? `${location.lat},${location.lon}:${radiusKm}` : ""),
@@ -152,8 +175,9 @@ export function FinderView() {
     <div className="space-y-4">
       <LocationSearch value={location} onChange={(l) => changeFilters(() => setLocation(l))} />
 
+      <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Rayon de recherche">
-        <span className="mr-1 text-xs font-medium text-violet-800/80">Rayon :</span>
+        <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Rayon :</span>
         {RADIUS_OPTIONS_KM.map((km) => (
           <button
             key={km}
@@ -170,8 +194,8 @@ export function FinderView() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Type de piscine">
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Type :</span>
           {(
             [
               ["all", "Toutes"],
@@ -194,8 +218,37 @@ export function FinderView() {
           ))}
         </div>
 
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          role="group"
+          aria-label="Ouverture"
+          title="D'après les horaires connus (une partie des piscines seulement)"
+        >
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Ouvertes :</span>
+          {(
+            [
+              ["all", "Peu importe"],
+              ["now", "Maintenant"],
+              ["today", "Aujourd'hui"],
+            ] as Array<[OpenFilter, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => changeFilters(() => setOpenFilter(key))}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                openFilter === key
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white/80 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Longueur de bassin">
-          <span className="text-xs font-medium text-violet-800/80">Bassin :</span>
+          <span className="w-20 shrink-0 text-xs font-medium text-violet-800/80">Bassin :</span>
           {(
             [
               ["all", "Toutes longueurs"],
