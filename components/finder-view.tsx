@@ -137,11 +137,14 @@ export function FinderView() {
           : pool.env === envFilter || pool.env === "mix",
       )
       // Longueur inconnue = piscine masquée par le filtre : on ne promet pas
-      // un bassin de 25 m sans donnée.
+      // un bassin de 25 m sans donnée. Une piscine à plusieurs bassins passe
+      // le filtre dès qu'UN bassin correspond (25 m = 25 à <50 m).
       .filter((pool) => {
         if (lenFilter === "all") return true;
-        const len = pool.len ?? 0;
-        return lenFilter === 50 ? len >= 50 : len >= 25 && len < 50;
+        const lens = pool.lens ?? [];
+        return lenFilter === 50
+          ? lens.some((l) => l >= 50)
+          : lens.some((l) => l >= 25 && l < 50);
       })
       // Ouverture : horaires connus et ouverts selon au moins un des plannings
       // (semaine type ou vacances scolaires — on ne sait pas toujours lequel

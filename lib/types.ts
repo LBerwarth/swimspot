@@ -20,8 +20,8 @@ export interface Pool {
   lat: number;
   lon: number;
   env?: PoolEnv;
-  /** Longueur du plus grand bassin en mètres (Data ES), si connue. */
-  len?: number;
+  /** Longueurs distinctes des bassins en mètres, décroissantes (Data ES). */
+  lens?: number[];
   /** Types de bassins : sportif, ludique, mixte, toboggan, plongeon, plongée. */
   basins: string[];
   /** Horaires au format OSM `opening_hours` (présent pour ~12 % des piscines). */

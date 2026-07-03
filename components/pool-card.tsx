@@ -86,11 +86,14 @@ export function PoolCard({
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {pool.len && (
-          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800">
-            {String(pool.len).replace(".", ",")} m
+        {(pool.lens ?? []).map((len) => (
+          <span
+            key={len}
+            className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800"
+          >
+            {String(len).replace(".", ",")} m
           </span>
-        )}
+        ))}
         {pool.env && (
           <span className="rounded-full bg-fuchsia-50 px-2 py-0.5 text-[11px] font-medium text-fuchsia-700 ring-1 ring-fuchsia-200">
             {ENV_LABELS[pool.env]}

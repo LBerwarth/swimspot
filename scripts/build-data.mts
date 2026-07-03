@@ -109,6 +109,17 @@ const SPLIT_OVERRIDES: Record<
   ],
 };
 
+/**
+ * Longueurs de bassin vérifiées manuellement, absentes des sources ouvertes
+ * (bassins trop récents pour le recensement, non cartographiés dans OSM).
+ * Source à documenter dans le commentaire de chaque entrée.
+ */
+const EXTRA_LENGTHS: Record<string, number[]> = {
+  // Toulouse-Lautrec : bassin nordique extérieur « Gisèle Vallerey » de 50 m,
+  // ouvert le 18 mai 2026 — metropole.toulouse.fr/annuaire/piscine-toulouse-lautrec.
+  I315550230: [50],
+};
+
 /** Minuscules sans accents, pour comparer les noms au motif d'exclusion. */
 function normalizeName(value: string): string {
   return value
@@ -300,12 +311,15 @@ async function main() {
             ? "ext"
             : undefined;
 
-    const lengths = basins
-      .map((b) => b.equip_bassin_long ?? b.equip_long)
-      .filter((v): v is number => typeof v === "number" && v > 0);
-    const len = lengths.length
-      ? Math.round(Math.max(...lengths) * 10) / 10
-      : undefined;
+    const lens = [
+      ...new Set(
+        basins
+          .map((b) => b.equip_bassin_long ?? b.equip_long)
+          .filter((v): v is number => typeof v === "number" && v > 0)
+          .map((v) => Math.round(v * 10) / 10)
+          .concat(EXTRA_LENGTHS[inst] ?? []),
+      ),
+    ].sort((a, b) => b - a);
 
     const candidates = nearbyOsm(lat, lon);
     // Valeur du plus proche élément qui renseigne l'un des tags demandés.
@@ -342,7 +356,7 @@ async function main() {
       lat: Math.round(lat * 1e5) / 1e5,
       lon: Math.round(lon * 1e5) / 1e5,
       ...(env ? { env } : {}),
-      ...(len ? { len } : {}),
+      ...(lens.length ? { lens } : {}),
       basins: basinLabels,
       ...(tags.opening_hours ? { hours: tags.opening_hours } : {}),
       ...(tags.fee === "yes" ? { fee: true } : tags.fee === "no" ? { fee: false } : {}),
