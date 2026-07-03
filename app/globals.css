@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f9fd;
+  --foreground: #0f2b46;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-outfit);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit), system-ui, sans-serif;
+}
+
+/* La carte Leaflet doit rester sous les menus déroulants de recherche. */
+.leaflet-container {
+  z-index: 0;
+}
