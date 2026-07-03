@@ -8,7 +8,7 @@ import type {
   PoolDataset,
   PoolWithDistance,
 } from "@/lib/types";
-import { haversineKm } from "@/lib/geo";
+import { formatDistance, haversineKm } from "@/lib/geo";
 import {
   isInClosedPeriod,
   isOpenAt,
@@ -22,7 +22,7 @@ import {
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
 import { useFavorites } from "@/components/use-favorites";
-import { useDict } from "@/components/locale-provider";
+import { useDict, useLocale } from "@/components/locale-provider";
 
 const PoolMap = dynamic(() => import("@/components/pool-map"), {
   ssr: false,
@@ -64,6 +64,7 @@ function countriesFor(index: CountryIndex, loc: UserLocation): string[] {
 
 export function FinderView() {
   const dict = useDict();
+  const locale = useLocale();
   const [index, setIndex] = useState<CountryIndex | null>(null);
   const [poolsByCountry, setPoolsByCountry] = useState<Map<string, Pool[]>>(
     () => new Map(),
@@ -253,6 +254,17 @@ export function FinderView() {
     () => (location ? [location.lat, location.lon] : null),
     [location],
   );
+
+  /** Distance de la piscine la plus proche, pour guider quand le rayon est vide. */
+  const nearestKm = useMemo(() => {
+    if (!location || allPools.length === 0) return null;
+    let best = Infinity;
+    for (const pool of allPools) {
+      const d = haversineKm(location.lat, location.lon, pool.lat, pool.lon);
+      if (d < best) best = d;
+    }
+    return Number.isFinite(best) ? best : null;
+  }, [allPools, location]);
 
   const changeFilters = (apply: () => void) => {
     apply();
@@ -508,7 +520,9 @@ export function FinderView() {
               : displayed.length === 0
                 ? favoritesOnly
                   ? dict.noneFavorite
-                  : dict.noneInRadius
+                  : nearestKm !== null && nearestKm > radiusKm
+                    ? dict.noneInRadiusNear(formatDistance(nearestKm, locale))
+                    : dict.noneInRadius
                 : dict.countLine(displayed.length, radiusKm, location.label)}
           </p>
 

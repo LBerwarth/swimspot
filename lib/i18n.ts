@@ -53,6 +53,7 @@ export interface Dict {
   referenced: (n: string) => string;
   loadingPools: string;
   noneInRadius: string;
+  noneInRadiusNear: (km: string) => string;
   noneFavorite: string;
   countLine: (n: number, radiusKm: number, label: string) => string;
   showMore: (n: number) => string;
@@ -143,6 +144,8 @@ const fr: Dict = {
   referenced: (n) => `${n} piscines publiques référencées.`,
   loadingPools: "Chargement des piscines…",
   noneInRadius: "Aucune piscine dans ce rayon — essayez un rayon plus grand.",
+  noneInRadiusNear: (km) =>
+    `Aucune piscine dans ce rayon — la plus proche est à ${km}.`,
   noneFavorite:
     "Aucune piscine favorite dans ce rayon — touchez ☆ sur une piscine pour l'ajouter.",
   countLine: (n, radiusKm, label) =>
@@ -254,6 +257,8 @@ const en: Dict = {
   referenced: (n) => `${n} public pools listed.`,
   loadingPools: "Loading pools…",
   noneInRadius: "No pool within this radius — try a larger one.",
+  noneInRadiusNear: (km) =>
+    `No pool within this radius — the nearest one is ${km} away.`,
   noneFavorite: "No favourite pool within this radius — tap ☆ on a pool to add it.",
   countLine: (n, radiusKm, label) =>
     `${n} pool${n > 1 ? "s" : ""} within ${radiusKm} km of ${label} (straight line).`,
@@ -364,6 +369,8 @@ const de: Dict = {
   referenced: (n) => `${n} öffentliche Schwimmbäder erfasst.`,
   loadingPools: "Schwimmbäder werden geladen…",
   noneInRadius: "Kein Schwimmbad in diesem Umkreis — versuche einen größeren.",
+  noneInRadiusNear: (km) =>
+    `Kein Schwimmbad in diesem Umkreis — das nächste ist ${km} entfernt.`,
   noneFavorite:
     "Kein Favorit in diesem Umkreis — tippe auf ☆ bei einem Schwimmbad, um es hinzuzufügen.",
   countLine: (n, radiusKm, label) =>
