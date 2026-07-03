@@ -9,8 +9,19 @@ Application sœur de [toulouse-piscines](https://toulouse-piscines.vercel.app/),
 
 ## Données
 
-Le fichier statique `public/data/piscines.json` est généré par
-`npm run build:data` à partir de deux sources ouvertes :
+Un fichier statique par pays (`public/data/piscines-<cc>.json` + `index.json`)
+est généré par `npm run build:data` (orchestrateur multi-pays, un module par
+source dans `scripts/sources/`). Le client charge l'index puis les fichiers
+des pays couvrant la position choisie.
+
+- **France** — Data ES + OSM (détails ci-dessous) : ~3 300 piscines.
+- **Angleterre** — [Active Places](https://www.activeplacespower.com)
+  (Sport England, licence OGL v3, API ArcGIS publique) : ~1 700 piscines
+  réellement ouvertes au public (« Pay and Play » et clubs communautaires ;
+  spas d'hôtels et clubs à adhésion écartés), avec longueurs de bassins et
+  sites web. Enrichissement OSM identique à la France.
+
+Sources France :
 
 - **[Data ES](https://equipements.sports.gouv.fr)** (ministère des Sports,
   licence ouverte) — recensement officiel des équipements sportifs. Base de

@@ -85,7 +85,12 @@ export async function loadEngland(): Promise<Pool[]> {
   console.log("Téléchargement Active Places (Sport England)…");
   const [poolRows, siteRows] = await Promise.all([
     queryAll<PoolRow>(POOLS_URL, {
-      where: "facstatus='Operational' AND accessibilitytypestr<>'Private Use'",
+      // Même philosophie que le filtre France : piscines réellement
+      // accessibles au public. « Registered Membership use » regroupe les
+      // spas d'hôtels et clubs privés (bassins de 9 m au cœur de Londres).
+      where:
+        "facstatus='Operational' AND accessibilitytypestr IN " +
+        "('Pay and Play','Sports Club / Community Association')",
       outFields: "siteid,facilitysubtype,length,lat,long",
     }),
     queryAll<SiteRow>(SITES_URL, {

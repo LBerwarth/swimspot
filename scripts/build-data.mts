@@ -209,8 +209,14 @@ async function main() {
     const { iso, load } = SOURCES[cc];
     console.log(`\n=== ${iso} ===`);
     const pools = await load();
-    const osm = await loadOsm(iso, getArg(`osm-${cc}`) ?? (cc === "fr" ? getArg("osm") : undefined));
-    enrichWithOsm(pools, osm);
+    // --skip-osm : publier sans enrichissement (utile quand les serveurs
+    // Overpass limitent) ; relancer sans le drapeau pour enrichir.
+    if (process.argv.includes("--skip-osm")) {
+      console.log("  Enrichissement OSM sauté (--skip-osm).");
+    } else {
+      const osm = await loadOsm(iso, getArg(`osm-${cc}`) ?? (cc === "fr" ? getArg("osm") : undefined));
+      enrichWithOsm(pools, osm);
+    }
     pools.sort((a, b) => a.id.localeCompare(b.id));
 
     const updated = new Date().toISOString();
