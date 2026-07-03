@@ -202,16 +202,22 @@ export function FinderView() {
   const streetKm =
     street && street.key === streetKey ? street.distances : null;
 
-  /** Liste affichée : distances route injectées, tri par distance route. */
+  /**
+   * Liste affichée : distances route injectées, tri et rayon par distance
+   * route (une piscine à 10 km à vol d'oiseau peut être à 16 km par la
+   * route : elle sort du rayon « 10 km »). La route étant toujours ≥ au vol
+   * d'oiseau, le préfiltre à vol d'oiseau ne perd aucune candidate.
+   */
   const displayed: PoolWithDistance[] = useMemo(() => {
     if (!streetKm) return nearby;
     return nearby
       .map((pool) => ({ ...pool, streetKm: streetKm.get(pool.id) }))
+      .filter((pool) => (pool.streetKm ?? pool.distanceKm) <= radiusKm)
       .sort(
         (a, b) =>
           (a.streetKm ?? a.distanceKm) - (b.streetKm ?? b.distanceKm),
       );
-  }, [nearby, streetKm]);
+  }, [nearby, streetKm, radiusKm]);
 
   const center = useMemo<[number, number] | null>(
     () => (location ? [location.lat, location.lon] : null),
@@ -414,11 +420,11 @@ export function FinderView() {
           <p className="text-sm text-slate-600" aria-live="polite">
             {dataset === null
               ? "Chargement des piscines…"
-              : nearby.length === 0
+              : displayed.length === 0
                 ? "Aucune piscine dans ce rayon — essayez un rayon plus grand."
-                : `${nearby.length} piscine${nearby.length > 1 ? "s" : ""} dans un rayon de ${radiusKm} km autour de ${location.label}${
-                    streetKm ? " · distances par la route" : " · distances à vol d'oiseau"
-                  }.`}
+                : `${displayed.length} piscine${displayed.length > 1 ? "s" : ""} à moins de ${radiusKm} km ${
+                    streetKm ? "par la route" : "à vol d'oiseau"
+                  } de ${location.label}.`}
           </p>
 
           <div className="space-y-3">
