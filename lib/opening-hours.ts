@@ -24,11 +24,25 @@ const MONTH_LABELS_FR = [
 /** Plages d'ouverture par jour (0 = lundi … 6 = dimanche), en minutes depuis minuit. */
 export type WeekSchedule = Array<Array<[number, number]>>;
 
+/** Borne d'une période calendaire : mois (0-11) et jour du mois. */
+export interface PeriodBound {
+  month: number;
+  day: number;
+}
+
+/** Période de fermeture saisonnière (ex. « Jun-Aug off »), bornes incluses. */
+export interface ClosedPeriod {
+  from: PeriodBound;
+  to: PeriodBound;
+}
+
 export interface ParsedOpeningHours {
   /** Planning par défaut (période scolaire quand des règles SH existent). */
   week: WeekSchedule;
   /** Planning des vacances scolaires (règles « SH »), s'il y en a. */
   holidayWeek?: WeekSchedule;
+  /** Fermetures saisonnières (« Jun-Aug off », « Jun 05-Aug 31 off »…). */
+  closedPeriods: ClosedPeriod[];
   /** Règles bornées par des dates, reformatées en français, non interprétées. */
   extras: string[];
 }
@@ -39,6 +53,12 @@ const DAY_SPEC_RE = new RegExp(
 );
 const TIME_RANGE_RE = /^\d{1,2}:\d{2}-\d{1,2}:\d{2}(?:,\d{1,2}:\d{2}-\d{1,2}:\d{2})*$/;
 const MONTH_START_RE = new RegExp(`^(?:${MONTH_CODES.join("|")})\\b`);
+// « Jun-Aug off », « Jun 05-Aug 31 off », « Aug off » : fermeture saisonnière.
+const MONTH_TOKEN = `(?:${MONTH_CODES.join("|")})`;
+const CLOSED_PERIOD_RE = new RegExp(
+  `^(${MONTH_TOKEN})(?:\\s+(\\d{1,2}))?(?:-(${MONTH_TOKEN})(?:\\s+(\\d{1,2}))?)?\\s+(?:off|closed)$`,
+  "i",
+);
 
 function emptyWeek(): WeekSchedule {
   return Array.from({ length: 7 }, () => []);
@@ -116,6 +136,7 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
   if (cleaned === "24/7") {
     return {
       week: Array.from({ length: 7 }, () => [[0, 24 * 60] as [number, number]]),
+      closedPeriods: [],
       extras: [],
     };
   }
@@ -124,6 +145,7 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
   // Jours non mentionnés = fermés (sémantique OSM).
   const week = emptyWeek();
   let holidayWeek: WeekSchedule | undefined;
+  const closedPeriods: ClosedPeriod[] = [];
   const extras: string[] = [];
   let sawBase = false;
 
@@ -145,7 +167,22 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
       if (!applyRule(holidayWeek, sh[1].trim())) return null;
       continue;
     }
-    // Règle bornée par des dates (« Oct 17-Nov 2 Mo-Fr 09:00-16:00 ») :
+    // Fermeture saisonnière (« Jun-Aug off ») : interprétée, car décisive
+    // pour les filtres d'ouverture (piscines d'hiver fermées l'été et
+    // réciproquement).
+    const closed = rule.match(CLOSED_PERIOD_RE);
+    if (closed) {
+      const monthIndex = (code: string) =>
+        MONTH_CODES.findIndex((m) => m.toLowerCase() === code.toLowerCase());
+      const fromMonth = monthIndex(closed[1]);
+      const toMonth = closed[3] ? monthIndex(closed[3]) : fromMonth;
+      closedPeriods.push({
+        from: { month: fromMonth, day: closed[2] ? Number(closed[2]) : 1 },
+        to: { month: toMonth, day: closed[4] ? Number(closed[4]) : 31 },
+      });
+      continue;
+    }
+    // Autre règle bornée par des dates (« Oct 17-Nov 2 Mo-Fr 09:00-16:00 ») :
     // restituée en français sans être appliquée à la semaine type.
     if (MONTH_START_RE.test(rule)) {
       extras.push(prettifySegment(rule));
@@ -157,7 +194,7 @@ export function parseOpeningHours(value: string): ParsedOpeningHours | null {
   }
 
   if (!sawBase) return null;
-  return { week, ...(holidayWeek ? { holidayWeek } : {}), extras };
+  return { week, ...(holidayWeek ? { holidayWeek } : {}), closedPeriods, extras };
 }
 
 function formatTime(minutes: number): string {
@@ -199,6 +236,32 @@ export function isOpenAt(week: WeekSchedule, now: Date): boolean {
   const day = (now.getDay() + 6) % 7; // Date.getDay() : 0 = dimanche.
   const minutes = now.getHours() * 60 + now.getMinutes();
   return week[day].some(([s, e]) => minutes >= s && minutes < e);
+}
+
+/** « fermé de juin à août » ou « fermé du 5 juin au 31 août ». */
+export function formatClosedPeriodFR(period: ClosedPeriod): string {
+  const monthsOnly = period.from.day === 1 && period.to.day === 31;
+  const MONTH_FULL = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+  ];
+  if (monthsOnly) {
+    return period.from.month === period.to.month
+      ? `fermé en ${MONTH_FULL[period.from.month]}`
+      : `fermé de ${MONTH_FULL[period.from.month]} à ${MONTH_FULL[period.to.month]}`;
+  }
+  return `fermé du ${period.from.day} ${MONTH_FULL[period.from.month]} au ${period.to.day} ${MONTH_FULL[period.to.month]}`;
+}
+
+/** `date` tombe-t-elle dans l'une des périodes de fermeture saisonnière ? */
+export function isInClosedPeriod(periods: ClosedPeriod[], date: Date): boolean {
+  const value = (date.getMonth() + 1) * 100 + date.getDate();
+  return periods.some(({ from, to }) => {
+    const a = (from.month + 1) * 100 + from.day;
+    const b = (to.month + 1) * 100 + to.day;
+    // Une période peut chevaucher le nouvel an (ex. Nov-Feb).
+    return a <= b ? value >= a && value <= b : value >= a || value <= b;
+  });
 }
 
 /** Traduit un segment OSM en français lisible, sans l'interpréter. */

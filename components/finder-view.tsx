@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { PoolDataset, PoolWithDistance } from "@/lib/types";
 import { haversineKm } from "@/lib/geo";
-import { isOpenAt, parseOpeningHours } from "@/lib/opening-hours";
+import {
+  isInClosedPeriod,
+  isOpenAt,
+  parseOpeningHours,
+} from "@/lib/opening-hours";
 import { fetchStreetDistancesKm } from "@/lib/street-distance";
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
@@ -116,6 +120,8 @@ export function FinderView() {
         const parsed = parseOpeningHours(pool.hours);
         if (!parsed) return false;
         const now = new Date();
+        // Fermeture saisonnière en cours (ex. piscine d'hiver l'été).
+        if (isInClosedPeriod(parsed.closedPeriods, now)) return false;
         const weeks = [
           parsed.week,
           ...(parsed.holidayWeek ? [parsed.holidayWeek] : []),

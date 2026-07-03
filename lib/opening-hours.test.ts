@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatClosedPeriodFR,
   formatWeekFR,
+  isInClosedPeriod,
   isOpenAt,
   parseOpeningHours,
   prettifyOpeningHours,
@@ -88,6 +90,37 @@ describe("parseOpeningHours", () => {
   it("restitue « PH » avec horaires en période particulière", () => {
     const parsed = parseOpeningHours("Mo-Fr 09:00-19:00; PH 10:00-12:00");
     expect(parsed!.extras).toEqual(["jours fériés 10h–12h"]);
+  });
+
+  it("interprète les fermetures saisonnières (« Jun-Aug off »)", () => {
+    const parsed = parseOpeningHours("Mo-Su 10:00-19:00; Jun-Aug off");
+    expect(parsed).not.toBeNull();
+    expect(parsed!.closedPeriods).toEqual([
+      { from: { month: 5, day: 1 }, to: { month: 7, day: 31 } },
+    ]);
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 6, 3))).toBe(true);
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 11, 3))).toBe(false);
+    expect(formatClosedPeriodFR(parsed!.closedPeriods[0])).toBe(
+      "fermé de juin à août",
+    );
+  });
+
+  it("interprète les fermetures saisonnières datées (« Jun 05-Aug 31 off »)", () => {
+    const parsed = parseOpeningHours("Mo-Su 10:00-19:00; Jun 05-Aug 31 off");
+    expect(parsed!.closedPeriods).toEqual([
+      { from: { month: 5, day: 5 }, to: { month: 7, day: 31 } },
+    ]);
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 5, 4))).toBe(false);
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 5, 5))).toBe(true);
+    expect(formatClosedPeriodFR(parsed!.closedPeriods[0])).toBe(
+      "fermé du 5 juin au 31 août",
+    );
+  });
+
+  it("gère une fermeture saisonnière à cheval sur le nouvel an (« Nov-Feb off »)", () => {
+    const parsed = parseOpeningHours("Mo-Su 10:00-19:00; Nov-Feb off");
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 0, 15))).toBe(true);
+    expect(isInClosedPeriod(parsed!.closedPeriods, new Date(2026, 6, 15))).toBe(false);
   });
 
   it("refuse les motifs hors périmètre plutôt que de les déformer", () => {

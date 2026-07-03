@@ -3,7 +3,9 @@
 import type { PoolWithDistance } from "@/lib/types";
 import { formatDistance } from "@/lib/geo";
 import {
+  formatClosedPeriodFR,
   formatWeekFR,
+  isInClosedPeriod,
   isOpenAt,
   parseOpeningHours,
   prettifyOpeningHours,
@@ -31,6 +33,11 @@ function WeekLines({ week }: { week: WeekSchedule }) {
 
 export function PoolCard({ pool }: { pool: PoolWithDistance }) {
   const parsed = pool.hours ? parseOpeningHours(pool.hours) : null;
+  // Fermeture saisonnière en cours (ex. piscine d'hiver fermée l'été) :
+  // prime sur tout le reste.
+  const seasonalClosed = parsed
+    ? isInClosedPeriod(parsed.closedPeriods, new Date())
+    : false;
   // Le badge « ouverte/fermée » n'est affiché que si la semaine type suffit :
   // avec des horaires de vacances scolaires ou des périodes datées, on ne sait
   // pas quel planning s'applique aujourd'hui.
@@ -97,16 +104,22 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
       <div className="mt-3 text-sm">
         {parsed ? (
           <div>
-            {openNow !== null && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  openNow
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {openNow ? "Ouverte en ce moment" : "Fermée en ce moment"}
+            {seasonalClosed ? (
+              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                Fermeture saisonnière en cours
               </span>
+            ) : (
+              openNow !== null && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    openNow
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {openNow ? "Ouverte en ce moment" : "Fermée en ce moment"}
+                </span>
+              )
             )}
             {parsed.holidayWeek && (
               <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
@@ -122,12 +135,17 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
                 <WeekLines week={parsed.holidayWeek} />
               </>
             )}
-            {parsed.extras.length > 0 && (
+            {(parsed.extras.length > 0 || parsed.closedPeriods.length > 0) && (
               <>
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
                   Périodes particulières
                 </p>
                 <ul className="mt-1 space-y-0.5 text-xs text-slate-700">
+                  {parsed.closedPeriods.map((period) => (
+                    <li key={formatClosedPeriodFR(period)}>
+                      {formatClosedPeriodFR(period)}
+                    </li>
+                  ))}
                   {parsed.extras.map((line) => (
                     <li key={line}>{line}</li>
                   ))}
