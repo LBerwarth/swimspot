@@ -8,7 +8,8 @@
     "start": "next start -p 3002",
     "test": "vitest run",
     "lint": "eslint",
-    "build:data": "tsx scripts/build-data.mts"
+    "build:data": "tsx scripts/build-data.mts",
+    "scrape:hours": "tsx scripts/scrape-website-hours.mts"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

@@ -204,6 +204,11 @@ export function PoolCard({
                 <WeekLines week={parsed.holidayWeek} />
               </>
             )}
+            {pool.hoursFrom === "web" && (
+              <p className="mt-1 text-[10px] text-slate-400">
+                {dict.centreHoursNote}
+              </p>
+            )}
             {(parsed.extras.length > 0 || parsed.closedPeriods.length > 0) && (
               <>
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">

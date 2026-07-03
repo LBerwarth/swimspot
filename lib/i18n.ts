@@ -75,6 +75,7 @@ export interface Dict {
   schoolHolidays: string;
   specialPeriods: string;
   hoursLabel: string;
+  centreHoursNote: string;
   noHours: string;
   priceLabel: string;
   paidEntry: string;
@@ -175,6 +176,8 @@ const fr: Dict = {
   schoolHolidays: "Vacances scolaires",
   specialPeriods: "Périodes particulières",
   hoursLabel: "Horaires :",
+  centreHoursNote:
+    "Horaires d'ouverture du centre (source : site officiel) — les créneaux des bassins peuvent différer.",
   noHours: "Horaires non renseignés — vérifiez sur le site officiel.",
   priceLabel: "Tarif :",
   paidEntry: "Entrée payante",
@@ -276,6 +279,8 @@ const en: Dict = {
   schoolHolidays: "School holidays",
   specialPeriods: "Special periods",
   hoursLabel: "Opening hours:",
+  centreHoursNote:
+    "Centre opening hours (source: official website) — pool session times may differ.",
   noHours: "Opening hours unknown — check the official website.",
   priceLabel: "Price:",
   paidEntry: "Paid entry",

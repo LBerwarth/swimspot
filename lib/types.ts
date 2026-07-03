@@ -27,6 +27,8 @@ export interface Pool {
   basins: string[];
   /** Horaires au format OSM `opening_hours` (présent pour ~12 % des piscines). */
   hours?: string;
+  /** « web » = horaires du centre lus sur le site officiel (schema.org). */
+  hoursFrom?: "web";
   /** Entrée payante (tag OSM `fee`). */
   fee?: boolean;
   /** Tarif en texte libre (tag OSM `charge`), rare. */
