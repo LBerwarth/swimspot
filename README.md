@@ -46,4 +46,6 @@ npm run build:data   # régénère public/data/piscines.json (sources en ligne)
 ## Stack
 
 Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Leaflet ·
-géocodage par [api-adresse.data.gouv.fr](https://adresse.data.gouv.fr/api-doc/adresse).
+géocodage par [api-adresse.data.gouv.fr](https://adresse.data.gouv.fr/api-doc/adresse) ·
+distances par la route via l'API table du
+[serveur OSRM public](https://project-osrm.org) (repli : vol d'oiseau).

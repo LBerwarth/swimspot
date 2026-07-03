@@ -29,35 +29,44 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
   const directions = `https://www.google.com/maps/dir/?api=1&destination=${pool.lat},${pool.lon}`;
 
   return (
-    <article className="rounded-2xl border border-sky-100 bg-white/90 p-4 shadow-sm">
+    <article className="rounded-2xl border border-fuchsia-100/60 bg-white/90 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold leading-snug text-sky-950">{pool.name}</h2>
-          <p className="mt-0.5 text-xs text-sky-900/60">
+          <h2 className="font-semibold leading-snug text-slate-900">{pool.name}</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
             {pool.address ? `${pool.address}, ` : ""}
             {pool.cp} {pool.city}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800">
-          {formatDistance(pool.distanceKm)}
+        <span
+          className="shrink-0 rounded-full bg-fuchsia-100 px-2.5 py-1 text-xs font-semibold text-fuchsia-900"
+          title={
+            pool.streetKm !== undefined
+              ? "Distance par la route"
+              : "Distance à vol d'oiseau"
+          }
+        >
+          {pool.streetKm !== undefined
+            ? formatDistance(pool.streetKm)
+            : `≈ ${formatDistance(pool.distanceKm)}`}
         </span>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         {pool.len && (
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 ring-1 ring-indigo-200">
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800">
             {String(pool.len).replace(".", ",")} m
           </span>
         )}
         {pool.env && (
-          <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-800 ring-1 ring-cyan-200">
+          <span className="rounded-full bg-fuchsia-50 px-2 py-0.5 text-[11px] font-medium text-fuchsia-700 ring-1 ring-fuchsia-200">
             {ENV_LABELS[pool.env]}
           </span>
         )}
         {pool.basins.map((b) => (
           <span
             key={b}
-            className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700 ring-1 ring-sky-200"
+            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
           >
             bassin {b}
           </span>
@@ -76,7 +85,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
             >
               {openNow ? "Ouverte en ce moment" : "Fermée en ce moment"}
             </span>
-            <ul className="mt-2 space-y-0.5 text-xs text-sky-950/80">
+            <ul className="mt-2 space-y-0.5 text-xs text-slate-700">
               {formatWeekFR(week).map((line) => (
                 <li key={line.days} className="flex gap-2">
                   <span className="w-16 shrink-0 font-medium">{line.days}</span>
@@ -86,16 +95,16 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
             </ul>
           </div>
         ) : pool.hours ? (
-          <p className="text-xs text-sky-950/80">
+          <p className="text-xs text-slate-700">
             <span className="font-medium">Horaires :</span> {pool.hours}
           </p>
         ) : (
-          <p className="text-xs italic text-sky-900/50">
+          <p className="text-xs italic text-slate-400">
             Horaires non renseignés — vérifiez sur le site officiel.
           </p>
         )}
         {tarif && (
-          <p className="mt-1.5 text-xs text-sky-950/80">
+          <p className="mt-1.5 text-xs text-slate-700">
             <span className="font-medium">Tarif :</span> {tarif}
           </p>
         )}
@@ -103,7 +112,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
 
       <div className="mt-3 flex flex-wrap gap-3 text-xs font-medium">
         <a
-          className="text-sky-700 underline-offset-2 hover:underline"
+          className="text-fuchsia-700 underline-offset-2 hover:underline"
           href={directions}
           target="_blank"
           rel="noreferrer"
@@ -112,7 +121,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
         </a>
         {pool.website && (
           <a
-            className="text-sky-700 underline-offset-2 hover:underline"
+            className="text-fuchsia-700 underline-offset-2 hover:underline"
             href={pool.website}
             target="_blank"
             rel="noreferrer"
@@ -122,7 +131,7 @@ export function PoolCard({ pool }: { pool: PoolWithDistance }) {
         )}
         {pool.phone && (
           <a
-            className="text-sky-700 underline-offset-2 hover:underline"
+            className="text-fuchsia-700 underline-offset-2 hover:underline"
             href={`tel:${pool.phone.replace(/\s/g, "")}`}
           >
             {pool.phone}

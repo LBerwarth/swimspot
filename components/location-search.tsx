@@ -123,17 +123,17 @@ export function LocationSearch({ value, onChange }: Props) {
               if (e.key === "Escape") setOpen(false);
             }}
             placeholder={value ? value.label : "Adresse, ville, code postal…"}
-            className="w-full rounded-xl border border-sky-200 bg-white/90 px-4 py-2.5 text-sm shadow-sm outline-none placeholder:text-sky-900/40 focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+            className="w-full rounded-xl border border-fuchsia-200 bg-white/90 px-4 py-2.5 text-sm shadow-sm outline-none placeholder:text-slate-400 focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-200"
             aria-label="Rechercher une adresse"
           />
           {open && (
-            <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-lg">
+            <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-fuchsia-200 bg-white shadow-lg">
               {suggestions.map((s) => (
                 <li key={`${s.lat}:${s.lon}`}>
                   <button
                     type="button"
                     onClick={() => pick(s)}
-                    className="block w-full px-4 py-2 text-left text-sm hover:bg-sky-50"
+                    className="block w-full px-4 py-2 text-left text-sm hover:bg-fuchsia-50"
                   >
                     {s.label}
                   </button>
@@ -146,7 +146,7 @@ export function LocationSearch({ value, onChange }: Props) {
           type="button"
           onClick={locateMe}
           disabled={locating}
-          className="shrink-0 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-sky-700 disabled:opacity-60"
+          className="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60"
         >
           {locating ? "Localisation…" : "📍 Autour de moi"}
         </button>

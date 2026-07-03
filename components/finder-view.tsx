@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { PoolDataset, PoolWithDistance } from "@/lib/types";
 import { haversineKm } from "@/lib/geo";
+import { fetchStreetDistancesKm } from "@/lib/street-distance";
 import { LocationSearch, type UserLocation } from "@/components/location-search";
 import { PoolCard } from "@/components/pool-card";
 
 const PoolMap = dynamic(() => import("@/components/pool-map"), {
   ssr: false,
   loading: () => (
-    <div className="h-72 w-full animate-pulse rounded-2xl bg-sky-100" />
+    <div className="h-72 w-full animate-pulse rounded-2xl bg-fuchsia-100" />
   ),
 });
 
@@ -35,6 +36,12 @@ export function FinderView() {
   const [envFilter, setEnvFilter] = useState<EnvFilter>("all");
   const [lenFilter, setLenFilter] = useState<LenFilter>("all");
   const [listLimit, setListLimit] = useState(LIST_STEP);
+  // Résultat OSRM, étiqueté par la recherche (position + rayon) qui l'a produit :
+  // un résultat d'une recherche précédente est simplement ignoré.
+  const [street, setStreet] = useState<{
+    key: string;
+    distances: Map<string, number>;
+  } | null>(null);
 
   useEffect(() => {
     let saved: SavedSearch | null = null;
@@ -69,7 +76,8 @@ export function FinderView() {
     }
   }, [location, radiusKm]);
 
-  const nearby: PoolWithDistance[] = useMemo(() => {
+  /** Piscines dans le rayon (à vol d'oiseau), triées par distance à vol d'oiseau. */
+  const inRadius: PoolWithDistance[] = useMemo(() => {
     if (!dataset || !location) return [];
     return dataset.pools
       .map((pool) => ({
@@ -77,6 +85,12 @@ export function FinderView() {
         distanceKm: haversineKm(location.lat, location.lon, pool.lat, pool.lon),
       }))
       .filter((pool) => pool.distanceKm <= radiusKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }, [dataset, location, radiusKm]);
+
+  /** Piscines du rayon après filtres type/longueur. */
+  const nearby: PoolWithDistance[] = useMemo(() => {
+    return inRadius
       .filter((pool) =>
         envFilter === "all"
           ? true
@@ -88,9 +102,41 @@ export function FinderView() {
         if (lenFilter === "all") return true;
         const len = pool.len ?? 0;
         return lenFilter === 50 ? len >= 50 : len >= 25 && len < 50;
-      })
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [dataset, location, radiusKm, envFilter, lenFilter]);
+      });
+  }, [inRadius, envFilter, lenFilter]);
+
+  const streetKey = useMemo(
+    () => (location ? `${location.lat},${location.lon}:${radiusKm}` : ""),
+    [location, radiusKm],
+  );
+
+  // Distances par la route (OSRM), calculées une fois par position + rayon —
+  // les filtres type/longueur réutilisent le même résultat. En cas d'échec,
+  // l'affichage retombe sur le vol d'oiseau.
+  useEffect(() => {
+    if (!location || inRadius.length === 0) return;
+    const controller = new AbortController();
+    fetchStreetDistancesKm(location, inRadius, controller.signal)
+      .then((distances) => setStreet({ key: streetKey, distances }))
+      .catch(() => {
+        // Serveur de routage indisponible : distances à vol d'oiseau.
+      });
+    return () => controller.abort();
+  }, [location, inRadius, streetKey]);
+
+  const streetKm =
+    street && street.key === streetKey ? street.distances : null;
+
+  /** Liste affichée : distances route injectées, tri par distance route. */
+  const displayed: PoolWithDistance[] = useMemo(() => {
+    if (!streetKm) return nearby;
+    return nearby
+      .map((pool) => ({ ...pool, streetKm: streetKm.get(pool.id) }))
+      .sort(
+        (a, b) =>
+          (a.streetKm ?? a.distanceKm) - (b.streetKm ?? b.distanceKm),
+      );
+  }, [nearby, streetKm]);
 
   const center = useMemo<[number, number] | null>(
     () => (location ? [location.lat, location.lon] : null),
@@ -107,7 +153,7 @@ export function FinderView() {
       <LocationSearch value={location} onChange={(l) => changeFilters(() => setLocation(l))} />
 
       <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Rayon de recherche">
-        <span className="mr-1 text-xs font-medium text-sky-900/70">Rayon :</span>
+        <span className="mr-1 text-xs font-medium text-violet-800/80">Rayon :</span>
         {RADIUS_OPTIONS_KM.map((km) => (
           <button
             key={km}
@@ -115,8 +161,8 @@ export function FinderView() {
             onClick={() => changeFilters(() => setRadiusKm(km))}
             className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
               radiusKm === km
-                ? "bg-sky-600 text-white shadow-sm"
-                : "bg-white/80 text-sky-800 ring-1 ring-sky-200 hover:bg-sky-50"
+                ? "bg-fuchsia-600 text-white shadow-sm"
+                : "bg-white/80 text-fuchsia-800 ring-1 ring-fuchsia-200 hover:bg-fuchsia-50"
             }`}
           >
             {km} km
@@ -139,8 +185,8 @@ export function FinderView() {
               onClick={() => changeFilters(() => setEnvFilter(key))}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                 envFilter === key
-                  ? "bg-cyan-600 text-white shadow-sm"
-                  : "bg-white/80 text-cyan-800 ring-1 ring-cyan-200 hover:bg-cyan-50"
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "bg-white/80 text-violet-800 ring-1 ring-violet-200 hover:bg-violet-50"
               }`}
             >
               {label}
@@ -149,7 +195,7 @@ export function FinderView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Longueur de bassin">
-          <span className="text-xs font-medium text-sky-900/70">Bassin :</span>
+          <span className="text-xs font-medium text-violet-800/80">Bassin :</span>
           {(
             [
               ["all", "Toutes longueurs"],
@@ -163,8 +209,8 @@ export function FinderView() {
               onClick={() => changeFilters(() => setLenFilter(key))}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                 lenFilter === key
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-white/80 text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-50"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "bg-white/80 text-purple-800 ring-1 ring-purple-200 hover:bg-purple-50"
               }`}
             >
               {label}
@@ -180,14 +226,14 @@ export function FinderView() {
       )}
 
       {!location && !loadError && (
-        <div className="rounded-2xl border border-dashed border-sky-300 bg-white/60 px-5 py-8 text-center text-sm text-sky-900/70">
+        <div className="rounded-2xl border border-dashed border-fuchsia-300 bg-white/60 px-5 py-8 text-center text-sm text-slate-600">
           <p className="text-2xl">🏊</p>
-          <p className="mt-2 font-medium">Où cherchez-vous une piscine ?</p>
+          <p className="mt-2 font-medium text-slate-800">Où cherchez-vous une piscine ?</p>
           <p className="mt-1">
             Touchez « 📍 Autour de moi » ou saisissez une adresse ci-dessus.
           </p>
           {dataset && (
-            <p className="mt-3 text-xs text-sky-900/50">
+            <p className="mt-3 text-xs text-slate-400">
               {dataset.count.toLocaleString("fr-FR")} piscines publiques
               référencées en France.
             </p>
@@ -197,29 +243,31 @@ export function FinderView() {
 
       {location && center && (
         <>
-          <PoolMap center={center} radiusKm={radiusKm} pools={nearby} />
+          <PoolMap center={center} radiusKm={radiusKm} pools={displayed} />
 
-          <p className="text-sm text-sky-900/80" aria-live="polite">
+          <p className="text-sm text-slate-600" aria-live="polite">
             {dataset === null
               ? "Chargement des piscines…"
               : nearby.length === 0
                 ? "Aucune piscine dans ce rayon — essayez un rayon plus grand."
-                : `${nearby.length} piscine${nearby.length > 1 ? "s" : ""} à moins de ${radiusKm} km de ${location.label}.`}
+                : `${nearby.length} piscine${nearby.length > 1 ? "s" : ""} dans un rayon de ${radiusKm} km autour de ${location.label}${
+                    streetKm ? " · distances par la route" : " · distances à vol d'oiseau"
+                  }.`}
           </p>
 
           <div className="space-y-3">
-            {nearby.slice(0, listLimit).map((pool) => (
+            {displayed.slice(0, listLimit).map((pool) => (
               <PoolCard key={pool.id} pool={pool} />
             ))}
           </div>
 
-          {nearby.length > listLimit && (
+          {displayed.length > listLimit && (
             <button
               type="button"
               onClick={() => setListLimit((n) => n + LIST_STEP)}
-              className="w-full rounded-xl bg-white/80 px-4 py-2.5 text-sm font-medium text-sky-800 ring-1 ring-sky-200 transition hover:bg-sky-50"
+              className="w-full rounded-xl bg-white/80 px-4 py-2.5 text-sm font-medium text-fuchsia-800 ring-1 ring-fuchsia-200 transition hover:bg-fuchsia-50"
             >
-              Afficher plus ({nearby.length - listLimit} restantes)
+              Afficher plus ({displayed.length - listLimit} restantes)
             </button>
           )}
         </>

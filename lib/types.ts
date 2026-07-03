@@ -43,5 +43,8 @@ export interface PoolDataset {
 
 /** Piscine annotée de sa distance à la position de l'utilisateur. */
 export interface PoolWithDistance extends Pool {
+  /** À vol d'oiseau — sert au filtre par rayon et de repli d'affichage. */
   distanceKm: number;
+  /** Par la route (OSRM), quand le calcul a abouti. */
+  streetKm?: number;
 }

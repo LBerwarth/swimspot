@@ -23,7 +23,7 @@ function escapeHtml(value: string): string {
 const USER_ICON = () =>
   L.divIcon({
     className: "",
-    html: '<div style="width:16px;height:16px;border-radius:9999px;background:#0284c7;border:3px solid white;box-shadow:0 0 0 2px #0284c7"></div>',
+    html: '<div style="width:16px;height:16px;border-radius:9999px;background:#7c3aed;border:3px solid white;box-shadow:0 0 0 2px #7c3aed"></div>',
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
@@ -31,7 +31,7 @@ const USER_ICON = () =>
 const POOL_ICON = () =>
   L.divIcon({
     className: "",
-    html: '<div style="width:14px;height:14px;border-radius:9999px;background:#06b6d4;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',
+    html: '<div style="width:14px;height:14px;border-radius:9999px;background:#d946ef;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>',
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
@@ -73,9 +73,9 @@ export function PoolMap({ center, radiusKm, pools }: Props) {
 
     const circle = L.circle(center, {
       radius: radiusKm * 1000,
-      color: "#0284c7",
+      color: "#a21caf",
       weight: 1.5,
-      fillColor: "#38bdf8",
+      fillColor: "#e879f9",
       fillOpacity: 0.08,
     });
     layer.addLayer(circle);
@@ -94,7 +94,7 @@ export function PoolMap({ center, radiusKm, pools }: Props) {
   return (
     <div
       ref={containerRef}
-      className="h-72 w-full rounded-2xl border border-sky-200 shadow-sm"
+      className="h-72 w-full rounded-2xl border border-fuchsia-200 shadow-sm"
       aria-label="Carte des piscines"
     />
   );
