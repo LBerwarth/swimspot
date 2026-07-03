@@ -23,6 +23,14 @@ des pays couvrant la position choisie.
   réellement ouvertes au public (« Pay and Play » et clubs communautaires ;
   spas d'hôtels et clubs à adhésion écartés), avec longueurs de bassins et
   sites web. Enrichissement OSM identique à la France.
+- **Allemagne** — [Bäderleben](https://baederleben.de) (Bundesinstitut für
+  Sportwissenschaft) : ~4 850 bäder publics avec **tarifs d'entrée (83 %)**,
+  longueurs, sites web et téléphones. Attribution obligatoire (affichée dans
+  le pied de page) : © BISp, coordonnées © GeoBasis-DE / BKG 2021.
+
+L'enrichissement « horaires du centre » (`npm run scrape:hours`) lit les
+données structurées schema.org des sites officiels connus et complète les
+piscines sans horaires (marquées `hoursFrom: "web"`).
 
 Sources France :
 

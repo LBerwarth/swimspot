@@ -57,6 +57,16 @@ const L10N: Record<
     allDay: "24/7",
     time: (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`,
   },
+  de: {
+    days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    monthsShort: ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."],
+    monthsFull: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+    closed: "geschlossen",
+    publicHolidays: "Feiertage",
+    schoolHolidays: "Schulferien",
+    allDay: "rund um die Uhr",
+    time: (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`,
+  },
 };
 
 /** Plages d'ouverture par jour (0 = lundi … 6 = dimanche), en minutes depuis minuit. */
@@ -295,6 +305,14 @@ export function formatClosedPeriodFR(
         : `closed from ${months[period.from.month]} to ${months[period.to.month]}`;
     }
     return `closed from ${months[period.from.month]} ${period.from.day} to ${months[period.to.month]} ${period.to.day}`;
+  }
+  if (locale === "de") {
+    if (monthsOnly) {
+      return period.from.month === period.to.month
+        ? `im ${months[period.from.month]} geschlossen`
+        : `von ${months[period.from.month]} bis ${months[period.to.month]} geschlossen`;
+    }
+    return `vom ${period.from.day}. ${months[period.from.month]} bis ${period.to.day}. ${months[period.to.month]} geschlossen`;
   }
   if (monthsOnly) {
     return period.from.month === period.to.month

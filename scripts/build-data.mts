@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import type { Pool } from "../lib/types";
 import { loadFrance } from "./sources/fr.mts";
 import { loadEngland } from "./sources/gb.mts";
+import { loadGermany } from "./sources/de.mts";
 
 // Serveur principal puis miroir : le principal limite parfois par IP.
 const OVERPASS_URLS = [
@@ -30,6 +31,7 @@ const OVERPASS_URLS = [
 const SOURCES: Record<string, { iso: string; load: () => Promise<Pool[]> }> = {
   fr: { iso: "FR", load: () => loadFrance(getArg("dataes")) },
   gb: { iso: "GB", load: loadEngland },
+  de: { iso: "DE", load: () => loadGermany(getArg("baederleben")) },
 };
 
 interface OsmElement {

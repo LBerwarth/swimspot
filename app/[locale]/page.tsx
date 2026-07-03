@@ -67,6 +67,15 @@ export default async function Home({
           {dict.footerLicenceGB} ·{" "}
           <a
             className="underline hover:text-fuchsia-700"
+            href="https://baederleben.de"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Bäderleben
+          </a>{" "}
+          {dict.footerLicenceDE} ·{" "}
+          <a
+            className="underline hover:text-fuchsia-700"
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
             rel="noreferrer"

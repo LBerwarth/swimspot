@@ -5,8 +5,8 @@
  * chaînes paramétrées.
  */
 
-export type Locale = "fr" | "en";
-export const LOCALES: Locale[] = ["fr", "en"];
+export type Locale = "fr" | "en" | "de";
+export const LOCALES: Locale[] = ["fr", "en", "de"];
 export const DEFAULT_LOCALE: Locale = "fr";
 
 export interface Dict {
@@ -87,6 +87,7 @@ export interface Dict {
   footerData: string;
   footerLicenceFR: string;
   footerLicenceGB: string;
+  footerLicenceDE: string;
   footerOsm: string;
   footerDisclaimer: string;
 
@@ -163,6 +164,11 @@ const fr: Dict = {
     principal: "bassin principal",
     apprentissage: "bassin d'apprentissage",
     lido: "bassin de plein air",
+    pataugeoire: "pataugeoire",
+    vagues: "bassin à vagues",
+    spa: "bain à remous",
+    kneipp: "bassin Kneipp",
+    naturel: "bassin naturel",
   },
   basinFallback: (label) => `bassin ${label}`,
 
@@ -189,6 +195,8 @@ const fr: Dict = {
   footerData: "Données :",
   footerLicenceFR: "(licence ouverte)",
   footerLicenceGB: "(licence OGL v3)",
+  footerLicenceDE:
+    "(© Bundesinstitut für Sportwissenschaft · coordonnées © GeoBasis-DE / BKG 2021)",
   footerOsm: "© les contributeurs d'OpenStreetMap",
   footerDisclaimer:
     "Horaires et tarifs issus d'OpenStreetMap : disponibles pour une partie des piscines " +
@@ -266,6 +274,11 @@ const en: Dict = {
     principal: "main pool",
     apprentissage: "learner pool",
     lido: "lido",
+    pataugeoire: "paddling pool",
+    vagues: "wave pool",
+    spa: "hot tub",
+    kneipp: "Kneipp basin",
+    naturel: "natural pool",
   },
   basinFallback: (label) => `${label} pool`,
 
@@ -292,6 +305,8 @@ const en: Dict = {
   footerData: "Data:",
   footerLicenceFR: "(open licence)",
   footerLicenceGB: "(OGL v3 licence)",
+  footerLicenceDE:
+    "(© Bundesinstitut für Sportwissenschaft · coordinates © GeoBasis-DE / BKG 2021)",
   footerOsm: "© OpenStreetMap contributors",
   footerDisclaimer:
     "Opening hours and prices come from OpenStreetMap and are only available for part of " +
@@ -301,7 +316,118 @@ const en: Dict = {
   countryNames: { fr: "France", gb: "England", de: "Germany" },
 };
 
-const DICTS: Record<Locale, Dict> = { fr, en };
+const de: Dict = {
+  metaTitle: "Swimspot — finde ein Schwimmbad in deiner Nähe",
+  metaDescription:
+    "Alle öffentlichen Schwimmbäder um dich herum, in Deutschland, Frankreich und England: " +
+    "Umkreis wählen, Becken, Öffnungszeiten und Preise sehen — mit Karte und Wegbeschreibung.",
+  subtitle:
+    "Finde die öffentlichen Schwimmbäder um dich herum: Becken, Öffnungszeiten und Preise, soweit bekannt.",
+
+  searchPlaceholder: "Adresse, Ort, Postleitzahl…",
+  searchAria: "Adresse suchen",
+  locateButton: "📍 In meiner Nähe",
+  locating: "Ortung…",
+  errNoGeolocation: "Standortbestimmung ist auf diesem Gerät nicht verfügbar.",
+  errGeoDenied: "Standort abgelehnt oder nicht verfügbar — suche stattdessen eine Adresse.",
+  errSearchDown: "Adresssuche ist derzeit nicht verfügbar.",
+
+  savedAddressesAria: "Gespeicherte Adressen",
+  saveAddress: "☆ Speichern",
+  removeAddress: (label) => `Adresse ${label} entfernen`,
+
+  radiusLabel: "Umkreis:",
+  radiusAria: "Suchumkreis",
+  typeLabel: "Typ:",
+  typeAria: "Schwimmbadtyp",
+  typeAll: "Alle",
+  typeIndoor: "Hallenbad",
+  typeOutdoor: "Freibad",
+  openLabel: "Geöffnet:",
+  openAria: "Öffnung",
+  openTitle:
+    "„Jetzt“: nur Bäder mit bekannten, aktuell geöffneten Zeiten. „Heute“: behält auch Bäder mit unbekannten Zeiten.",
+  openAll: "Egal",
+  openNow: "Jetzt",
+  openToday: "Heute",
+  favLabel: "Favoriten:",
+  favAria: "Favoriten",
+  favAll: "Alle",
+  favOnly: "★ Nur Favoriten",
+  lenLabel: "Becken:",
+  lenAria: "Beckenlänge",
+  lenAll: "Alle Längen",
+
+  loadError: "Die Schwimmbadliste konnte nicht geladen werden. Bitte Seite neu laden.",
+  emptyTitle: "Wo suchst du ein Schwimmbad?",
+  emptyHint: "Tippe auf „📍 In meiner Nähe“ oder gib oben eine Adresse ein.",
+  referenced: (n) => `${n} öffentliche Schwimmbäder erfasst.`,
+  loadingPools: "Schwimmbäder werden geladen…",
+  noneInRadius: "Kein Schwimmbad in diesem Umkreis — versuche einen größeren.",
+  noneFavorite:
+    "Kein Favorit in diesem Umkreis — tippe auf ☆ bei einem Schwimmbad, um es hinzuzufügen.",
+  countLine: (n, radiusKm, label) =>
+    `${n} Schwimmbäder im Umkreis von ${radiusKm} km (Luftlinie) um ${label}.`,
+  showMore: (n) => `Mehr anzeigen (${n} weitere)`,
+  mapAria: "Schwimmbad-Karte",
+
+  distanceTitle: "Entfernung Luftlinie",
+  favAdd: (name) => `${name} zu Favoriten hinzufügen`,
+  favRemove: (name) => `${name} aus Favoriten entfernen`,
+  envLabels: { int: "Hallenbad", ext: "Freibad", mix: "Kombibad" },
+  basinLabels: {
+    sportif: "Schwimmerbecken",
+    ludique: "Nichtschwimmerbecken",
+    mixte: "Variobecken",
+    toboggan: "Rutschenbecken",
+    plongeon: "Sprungbecken",
+    plongée: "Tauchbecken",
+    principal: "Hauptbecken",
+    apprentissage: "Kursbecken",
+    lido: "Freibecken",
+    pataugeoire: "Kleinkinderbecken",
+    vagues: "Wellenbecken",
+    spa: "Warmsprudelbecken",
+    kneipp: "Kneippbecken",
+    naturel: "Naturbecken",
+  },
+  basinFallback: (label) => `${label}-Becken`,
+
+  seasonalClosed: "Derzeit saisonbedingt geschlossen",
+  badgeOpenNow: "Jetzt geöffnet",
+  badgeClosedNow: "Jetzt geschlossen",
+  badgeClosedToday: "Heute geschlossen",
+  todayLabel: "Heute:",
+  liveSource: "Tagesaktueller Status — metropole.toulouse.fr",
+  schoolTerm: "Schulzeit",
+  schoolHolidays: "Schulferien",
+  specialPeriods: "Besondere Zeiträume",
+  hoursLabel: "Öffnungszeiten:",
+  centreHoursNote:
+    "Öffnungszeiten des Zentrums (Quelle: offizielle Website) — Beckenzeiten können abweichen.",
+  noHours: "Öffnungszeiten unbekannt — bitte auf der offiziellen Website prüfen.",
+  priceLabel: "Eintritt:",
+  paidEntry: "Kostenpflichtig",
+  freeEntry: "Eintritt frei",
+  directions: "Route ↗",
+  website: "Website ↗",
+  searchWebsite: "Website suchen ↗",
+
+  footerData: "Daten:",
+  footerLicenceFR: "(offene Lizenz)",
+  footerLicenceGB: "(OGL-v3-Lizenz)",
+  footerLicenceDE:
+    "(© Bundesinstitut für Sportwissenschaft · Koordinaten © GeoBasis-DE / BKG 2021)",
+  footerOsm: "© OpenStreetMap-Mitwirkende",
+  footerDisclaimer:
+    "Öffnungszeiten und Preise stammen aus offenen Quellen und liegen nur für einen Teil " +
+    "der Bäder vor — vor dem Besuch bitte auf der offiziellen Website prüfen.",
+
+  coveredLabel: "Abgedeckte Länder:",
+  countryNames: { fr: "Frankreich", gb: "England", de: "Deutschland" },
+};
+
+const DICTS: Record<Locale, Dict> = { fr, en, de };
 
 export function getDict(locale: Locale): Dict {
   return DICTS[locale] ?? DICTS[DEFAULT_LOCALE];
