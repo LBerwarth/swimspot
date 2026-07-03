@@ -188,9 +188,12 @@ async function main() {
     osmGrid.set(key, list);
   }
 
-  const nearestOsm = (lat: number, lon: number): OsmElement | null => {
-    let best: OsmElement | null = null;
-    let bestDist = 0.3; // 300 m maximum pour accepter la correspondance.
+  // Tous les équipements OSM à moins de 300 m, du plus proche au plus loin.
+  // Un même site est souvent décrit par plusieurs éléments (chaque bassin +
+  // le centre sportif) : les horaires vivent sur un bassin, le site web sur
+  // le centre — il faut fusionner, pas prendre le seul plus proche.
+  const nearbyOsm = (lat: number, lon: number): OsmElement[] => {
+    const found: Array<{ el: OsmElement; dist: number }> = [];
     const cy = Math.round(lat * 100);
     const cx = Math.round(lon * 100);
     for (let dy = -1; dy <= 1; dy++) {
@@ -198,14 +201,11 @@ async function main() {
         for (const el of osmGrid.get(`${cy + dy}:${cx + dx}`) ?? []) {
           const c = osmCoords(el)!;
           const dist = haversineKm(lat, lon, c.lat, c.lon);
-          if (dist < bestDist) {
-            bestDist = dist;
-            best = el;
-          }
+          if (dist < 0.3) found.push({ el, dist });
         }
       }
     }
-    return best;
+    return found.sort((a, b) => a.dist - b.dist).map((f) => f.el);
   };
 
   // 3. Construire les piscines.
@@ -269,13 +269,29 @@ async function main() {
       ? Math.round(Math.max(...lengths) * 10) / 10
       : undefined;
 
-    const osm = nearestOsm(lat, lon);
-    const tags = osm?.tags ?? {};
-    if (osm) stats.matched++;
+    const candidates = nearbyOsm(lat, lon);
+    // Valeur du plus proche élément qui renseigne l'un des tags demandés.
+    const pick = (...keys: string[]): string | undefined => {
+      for (const el of candidates) {
+        for (const key of keys) {
+          const value = el.tags?.[key];
+          if (value) return value;
+        }
+      }
+      return undefined;
+    };
+    const tags = {
+      opening_hours: pick("opening_hours"),
+      fee: pick("fee"),
+      charge: pick("charge"),
+      website: pick("website", "contact:website"),
+      phone: pick("phone", "contact:phone"),
+    };
+    if (candidates.length > 0) stats.matched++;
     if (tags.opening_hours) stats.hours++;
     if (tags.charge) stats.charge++;
     if (tags.fee) stats.fee++;
-    if (tags.website || tags["contact:website"]) stats.website++;
+    if (tags.website) stats.website++;
 
     pools.push({
       id: inst,
@@ -293,12 +309,8 @@ async function main() {
       ...(tags.opening_hours ? { hours: tags.opening_hours } : {}),
       ...(tags.fee === "yes" ? { fee: true } : tags.fee === "no" ? { fee: false } : {}),
       ...(tags.charge ? { charge: tags.charge } : {}),
-      ...(tags.website || tags["contact:website"]
-        ? { website: tags.website ?? tags["contact:website"] }
-        : {}),
-      ...(tags.phone || tags["contact:phone"]
-        ? { phone: tags.phone ?? tags["contact:phone"] }
-        : {}),
+      ...(tags.website ? { website: tags.website } : {}),
+      ...(tags.phone ? { phone: tags.phone } : {}),
     });
   }
 

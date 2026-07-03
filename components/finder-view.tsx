@@ -238,8 +238,8 @@ export function FinderView() {
               onClick={() => changeFilters(() => setOpenFilter(key))}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                 openFilter === key
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-white/80 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-50"
+                  ? "bg-pink-600 text-white shadow-sm"
+                  : "bg-white/80 text-pink-800 ring-1 ring-pink-200 hover:bg-pink-50"
               }`}
             >
               {label}
